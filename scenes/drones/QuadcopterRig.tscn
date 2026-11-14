@@ -2,6 +2,7 @@
 
 [ext_resource type="Script" path="res://scripts/flight/FlightPhysics.gd" id="1_physics"]
 [ext_resource type="Script" path="res://scripts/flight/DroneRig.gd" id="2_rig"]
+[ext_resource type="Script" path="res://scripts/flight/StuntEngine.gd" id="3_stunt"]
 
 [sub_resource type="BoxShape3D" id="BoxShape3D_body"]
 size = Vector3(0.48, 0.12, 0.48)
@@ -80,13 +81,17 @@ top_radius = 0.012
 bottom_radius = 0.014
 height = 0.02
 
-[node name="Quadcopter" type="RigidBody3D" node_paths=PackedStringArray("raycast_ground")]
+[node name="Quadcopter" type="RigidBody3D" node_paths=PackedStringArray("raycast_ground", "stunt_engine")]
 mass = 1.25
 continuous_cd = true
 contact_monitor = true
 max_contacts_reported = 4
 script = ExtResource("1_physics")
 raycast_ground = NodePath("GroundRayCast")
+stunt_engine = NodePath("StuntEngine")
+
+[node name="StuntEngine" type="Node" parent="."]
+script = ExtResource("3_stunt")
 
 [node name="CollisionShape3D" type="CollisionShape3D" parent="."]
 shape = SubResource("BoxShape3D_body")

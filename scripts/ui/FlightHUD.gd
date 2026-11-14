@@ -31,6 +31,7 @@ signal world_select_requested
 @onready var btn_camera: Button = $BottomBar/HBox/BtnCamera
 @onready var btn_reset: Button = $BottomBar/HBox/BtnReset
 @onready var btn_mode: Button = $BottomBar/HBox/BtnMode
+@onready var btn_stunt: Button = get_node_or_null("BottomBar/HBox/BtnStunt")
 @onready var btn_worlds: Button = get_node_or_null("BottomBar/HBox/BtnWorlds")
 
 func _ready() -> void:
@@ -50,6 +51,8 @@ func _ready() -> void:
 		btn_reset.pressed.connect(_on_btn_reset_pressed)
 	if btn_mode:
 		btn_mode.pressed.connect(_on_btn_mode_pressed)
+	if btn_stunt:
+		btn_stunt.pressed.connect(_on_btn_stunt_pressed)
 	if btn_worlds:
 		btn_worlds.pressed.connect(func(): world_select_requested.emit())
 
@@ -57,6 +60,10 @@ func _ready() -> void:
 		flight_physics.telemetry_updated.connect(_on_telemetry_updated)
 		flight_physics.drone_state_changed.connect(_on_drone_state_changed)
 		flight_physics.drone_crashed.connect(_on_drone_crashed)
+		if flight_physics.stunt_engine:
+			flight_physics.stunt_engine.stunt_started.connect(_on_stunt_started)
+			flight_physics.stunt_engine.stunt_completed.connect(_on_stunt_completed)
+			flight_physics.stunt_engine.stunt_failed.connect(_on_stunt_failed)
 
 func _on_left_stick_moved(vec: Vector2) -> void:
 	if input_router:
@@ -92,9 +99,31 @@ func _on_btn_mode_pressed() -> void:
 	if input_router:
 		input_router.request_flight_mode_cycle()
 
+func _on_btn_stunt_pressed() -> void:
+	if input_router:
+		input_router.request_stunt("front_flip")
+
+func _on_stunt_started(stunt_type: String) -> void:
+	if label_state_banner:
+		label_state_banner.text = "EXECUTING %s..." % stunt_type.to_upper().replace("_", " ")
+		label_state_banner.visible = true
+
+func _on_stunt_completed(stunt_type: String, score: int, quality: String) -> void:
+	if label_state_banner:
+		label_state_banner.text = "STUNT COMPLETE: %s +%d PTS (%s)!" % [stunt_type.to_upper().replace("_", " "), score, quality]
+		label_state_banner.visible = true
+
+func _on_stunt_failed(reason: String) -> void:
+	if label_state_banner:
+		label_state_banner.text = "STUNT ABORTED: %s" % reason
+		label_state_banner.visible = true
+
 func _on_telemetry_updated(data: Dictionary) -> void:
 	if label_flight_mode:
-		label_flight_mode.text = data.get("profile", "NORMAL").to_upper()
+		var prof = data.get("profile", "NORMAL")
+		label_flight_mode.text = prof.to_upper()
+		if btn_stunt:
+			btn_stunt.visible = (prof.to_upper() in ["ARCADE", "ACRO"])
 
 	if label_battery:
 		var pct = data.get("battery_pct", 100.0)

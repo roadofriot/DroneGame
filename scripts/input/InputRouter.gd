@@ -82,6 +82,8 @@ func _check_action_triggers() -> void:
 		camera_toggle_requested.emit()
 	if Input.is_action_just_pressed("flight_mode_next"):
 		flight_mode_cycle_requested.emit()
+	if Input.is_action_just_pressed("stunt_flip"):
+		stunt_requested.emit("front_flip")
 
 func set_virtual_left_stick(stick_x: float, stick_y: float) -> void:
 	# Left stick: X = yaw (-1=left, 1=right), Y = throttle (1=up, -1=down)

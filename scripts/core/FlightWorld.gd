@@ -11,6 +11,7 @@ extends Node3D
 @onready var mission_results: MissionResults = $FlightHUD/MissionResults
 @onready var pause_menu: PauseMenu = $FlightHUD/PauseMenu
 @onready var world_select_menu: WorldSelectMenu = get_node_or_null("FlightHUD/WorldSelectMenu")
+@onready var training_academy: TrainingAcademy = get_node_or_null("TrainingAcademy")
 
 @onready var gates_container: Node3D = $EnvironmentGeometry/FlightGates
 @onready var coins_container: Node3D = $EnvironmentGeometry/CollectibleCoins
@@ -58,6 +59,24 @@ func _ready() -> void:
 		if not world_select_menu.world_selected.is_connected(_on_world_selected):
 			world_select_menu.world_selected.connect(_on_world_selected)
 
+	# Initialize Training Academy
+	if not training_academy:
+		training_academy = TrainingAcademy.new()
+		training_academy.name = "TrainingAcademy"
+		training_academy.target_drone = quadcopter
+		add_child(training_academy)
+
+	if training_academy:
+		for gate in gates:
+			if not gate.gate_passed.is_connected(training_academy.on_gate_passed):
+				gate.gate_passed.connect(training_academy.on_gate_passed)
+		if not training_academy.step_updated.is_connected(_on_academy_step_updated):
+			training_academy.step_updated.connect(_on_academy_step_updated)
+		if not training_academy.lesson_completed.is_connected(_on_academy_lesson_completed):
+			training_academy.lesson_completed.connect(_on_academy_lesson_completed)
+		if not training_academy.lesson_failed.is_connected(_on_academy_lesson_failed):
+			training_academy.lesson_failed.connect(_on_academy_lesson_failed)
+
 	# Start default tutorial mission
 	if mission_manager:
 		mission_manager.start_mission("training_gate_run")
@@ -83,6 +102,20 @@ func _on_mission_completed(results: Dictionary) -> void:
 func _on_mission_failed(reason: String) -> void:
 	if flight_hud and flight_hud.label_state_banner:
 		flight_hud.label_state_banner.text = "MISSION FAILED: %s — PRESS R TO RETRY" % reason
+		flight_hud.label_state_banner.visible = true
+
+func _on_academy_step_updated(instruction: String, current_step: int, total_steps: int) -> void:
+	if mission_overlay:
+		mission_overlay.update_progress("Step %d/%d: %s" % [current_step, total_steps, instruction], current_step, total_steps, 0.0)
+
+func _on_academy_lesson_completed(_lesson_id: String, medal: String, score: int, _rewards: Dictionary) -> void:
+	if flight_hud and flight_hud.label_state_banner:
+		flight_hud.label_state_banner.text = "ACADEMY LESSON COMPLETE [%s MEDAL] +%d PTS!" % [medal, score]
+		flight_hud.label_state_banner.visible = true
+
+func _on_academy_lesson_failed(_lesson_id: String, reason: String) -> void:
+	if flight_hud and flight_hud.label_state_banner:
+		flight_hud.label_state_banner.text = "LESSON FAILED: %s — PRESS R TO RETRY" % reason
 		flight_hud.label_state_banner.visible = true
 
 func _on_results_retry() -> void:

@@ -14,6 +14,7 @@ enum DroneState { DISARMED, TAKING_OFF, FLYING, LANDING, CRASHED }
 
 @export var input_router: InputRouter
 @export var raycast_ground: RayCast3D
+@export var stunt_engine: StuntEngine
 
 # Physical Constants
 @export var drone_mass: float = 1.25
@@ -61,6 +62,9 @@ var roll_pid_p: float = 6.0
 var roll_pid_d: float = 1.2
 var yaw_rate_p: float = 3.5
 
+func _init() -> void:
+	_load_profiles()
+
 func _ready() -> void:
 	mass = drone_mass
 	gravity_scale = 1.0
@@ -77,6 +81,14 @@ func _ready() -> void:
 		input_router.takeoff_land_requested.connect(_on_takeoff_land_requested)
 		input_router.reset_requested.connect(_on_reset_requested)
 		input_router.flight_mode_cycle_requested.connect(_on_flight_mode_cycle_requested)
+		input_router.stunt_requested.connect(_on_stunt_requested)
+
+	if not stunt_engine:
+		stunt_engine = get_node_or_null("StuntEngine")
+		if not stunt_engine:
+			stunt_engine = StuntEngine.new()
+			stunt_engine.name = "StuntEngine"
+			add_child(stunt_engine)
 
 	body_entered.connect(_on_body_entered)
 
@@ -149,6 +161,8 @@ func _load_profiles() -> void:
 					all_profiles[k] = data["profiles"][k]
 
 func set_flight_profile(profile_name: String) -> void:
+	if all_profiles.is_empty():
+		_load_profiles()
 	if all_profiles.has(profile_name):
 		active_profile_name = profile_name
 		active_profile = all_profiles[profile_name]
@@ -241,6 +255,10 @@ func _process_taking_off(delta: float) -> void:
 	_calculate_auto_level_rpms(climb_thrust, 0.0, 0.0, 0.0, delta)
 
 func _process_flying(delta: float) -> void:
+	if stunt_engine and stunt_engine.is_performing_stunt():
+		stunt_engine.process_stunt_physics(delta, self)
+		return
+
 	var in_throttle = input_router.throttle if input_router else 0.0
 	var in_yaw = input_router.yaw if input_router else 0.0
 	var in_pitch = input_router.pitch if input_router else 0.0
@@ -379,6 +397,9 @@ func _on_reset_requested() -> void:
 	reset_to_pad()
 
 func reset_to_pad() -> void:
+	if stunt_engine and stunt_engine.is_stunting:
+		stunt_engine.is_stunting = false
+		stunt_engine.stunt_phase = StuntEngine.StuntState.IDLE
 	global_transform = spawn_transform
 	linear_velocity = Vector3.ZERO
 	angular_velocity = Vector3.ZERO
@@ -389,6 +410,10 @@ func reset_to_pad() -> void:
 	battery_percent = 100.0
 	current_state = DroneState.DISARMED
 	drone_state_changed.emit("DISARMED")
+
+func _on_stunt_requested(stunt_type: String) -> void:
+	if stunt_engine:
+		stunt_engine.trigger_stunt(stunt_type, self)
 
 func _on_flight_mode_cycle_requested() -> void:
 	var mode_keys = ["normal", "cine", "sport", "arcade", "acro"]

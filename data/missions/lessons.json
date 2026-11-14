@@ -1,0 +1,202 @@
+{
+  "version": "1.0.0",
+  "academy_title": "MindSparQ Flight Academy",
+  "lessons": [
+    {
+      "id": "academy_01_takeoff",
+      "index": 1,
+      "title": "Lesson 1: Takeoff & Hover Stability",
+      "subtitle": "Master vertical thrust and auto-level altitude hold",
+      "description": "Arm the drone, ascend to 2.0 meters altitude, and hold stable position for 3 consecutive seconds.",
+      "prerequisite": "",
+      "rewards": {
+        "xp": 100,
+        "coins": 50
+      },
+      "medal_times": {
+        "gold": 8.0,
+        "silver": 14.0,
+        "bronze": 22.0
+      },
+      "steps": [
+        {
+          "index": 0,
+          "instruction": "Press Space or Tap TAKEOFF to arm motors and lift off.",
+          "type": "takeoff"
+        },
+        {
+          "index": 1,
+          "instruction": "Ascend to target altitude (1.8m - 2.5m AGL).",
+          "type": "reach_altitude",
+          "target_altitude_min": 1.7,
+          "target_altitude_max": 2.5
+        },
+        {
+          "index": 2,
+          "instruction": "Hold stable hover within target altitude window.",
+          "type": "maintain_hover",
+          "target_altitude_min": 1.5,
+          "target_altitude_max": 2.7,
+          "max_drift_speed": 1.2,
+          "duration_required": 3.0
+        }
+      ]
+    },
+    {
+      "id": "academy_02_yaw",
+      "index": 2,
+      "title": "Lesson 2: Heading & Horizon Control",
+      "subtitle": "Use left stick yaw to rotate 90 degrees right, hold, then return",
+      "description": "Rotate the quadcopter heading 90 degrees clockwise using left stick yaw, hold steady for 1.5s, then counter-yaw back to original heading.",
+      "prerequisite": "academy_01_takeoff",
+      "rewards": {
+        "xp": 150,
+        "coins": 75
+      },
+      "medal_times": {
+        "gold": 12.0,
+        "silver": 18.0,
+        "bronze": 26.0
+      },
+      "steps": [
+        {
+          "index": 0,
+          "instruction": "Ensure drone is airborne at safe altitude (>1.5m).",
+          "type": "takeoff"
+        },
+        {
+          "index": 1,
+          "instruction": "Yaw right by 90 degrees (Heading offset +90°).",
+          "type": "yaw_rotation",
+          "target_angle_deg": 90.0,
+          "tolerance_deg": 18.0
+        },
+        {
+          "index": 2,
+          "instruction": "Hold new heading steady for 1.5 seconds.",
+          "type": "hold_heading",
+          "duration_required": 1.5
+        },
+        {
+          "index": 3,
+          "instruction": "Yaw left to counter-rotate back to starting heading (within 20°).",
+          "type": "return_heading",
+          "tolerance_deg": 20.0
+        }
+      ]
+    },
+    {
+      "id": "academy_03_pitch_roll",
+      "index": 3,
+      "title": "Lesson 3: Pitch, Roll & Braking",
+      "subtitle": "Accelerate forward, then actively brake to a full stop",
+      "description": "Pitch down to accelerate forward above 4.0 m/s ground speed, then pull back on the right stick to actively counter-pitch and decelerate below 0.6 m/s.",
+      "prerequisite": "academy_02_yaw",
+      "rewards": {
+        "xp": 200,
+        "coins": 100
+      },
+      "medal_times": {
+        "gold": 10.0,
+        "silver": 16.0,
+        "bronze": 24.0
+      },
+      "steps": [
+        {
+          "index": 0,
+          "instruction": "Climb above 2.0m altitude.",
+          "type": "reach_altitude",
+          "target_altitude_min": 1.8,
+          "target_altitude_max": 10.0
+        },
+        {
+          "index": 1,
+          "instruction": "Push right stick forward: accelerate to >= 4.0 m/s.",
+          "type": "accelerate_forward",
+          "target_speed": 4.0
+        },
+        {
+          "index": 2,
+          "instruction": "Pull back to brake actively: bring speed below 0.6 m/s.",
+          "type": "active_brake",
+          "max_speed": 0.6,
+          "duration_required": 1.0
+        }
+      ]
+    },
+    {
+      "id": "academy_04_slalom",
+      "index": 4,
+      "title": "Lesson 4: Gate Precision Navigation",
+      "subtitle": "Fly cleanly through 3 consecutive course gates",
+      "description": "Navigate through 3 training gates in sequential order while maintaining altitude below 8.0 meters without colliding.",
+      "prerequisite": "academy_03_pitch_roll",
+      "rewards": {
+        "xp": 250,
+        "coins": 150
+      },
+      "medal_times": {
+        "gold": 16.0,
+        "silver": 24.0,
+        "bronze": 35.0
+      },
+      "steps": [
+        {
+          "index": 0,
+          "instruction": "Fly through Gate 1.",
+          "type": "pass_gate",
+          "target_gate_index": 0
+        },
+        {
+          "index": 1,
+          "instruction": "Align heading and fly through Gate 2.",
+          "type": "pass_gate",
+          "target_gate_index": 1
+        },
+        {
+          "index": 2,
+          "instruction": "Fly through Gate 3 to finish the circuit.",
+          "type": "pass_gate",
+          "target_gate_index": 2
+        }
+      ]
+    },
+    {
+      "id": "academy_05_landing",
+      "index": 5,
+      "title": "Lesson 5: Precision Helipad Landing",
+      "subtitle": "Center over the landing pad and touch down gently",
+      "description": "Return to the takeoff helipad (within 3.0m radius), descend with vertical speed under 0.8 m/s, and touch down with tilt under 12 degrees.",
+      "prerequisite": "academy_04_slalom",
+      "rewards": {
+        "xp": 300,
+        "coins": 200
+      },
+      "medal_times": {
+        "gold": 15.0,
+        "silver": 25.0,
+        "bronze": 40.0
+      },
+      "steps": [
+        {
+          "index": 0,
+          "instruction": "Fly over the spawn helipad (within 3.5m radius).",
+          "type": "align_helipad",
+          "max_radius": 3.5
+        },
+        {
+          "index": 1,
+          "instruction": "Descend gently: keep descent rate under 1.0 m/s and tilt under 15°.",
+          "type": "gentle_descent",
+          "max_descent_speed": 1.0,
+          "max_tilt_deg": 15.0
+        },
+        {
+          "index": 2,
+          "instruction": "Touch down on the pad and disarm motors.",
+          "type": "touchdown"
+        }
+      ]
+    }
+  ]
+}
