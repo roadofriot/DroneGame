@@ -31,6 +31,9 @@
       "kp_rate": 30.0,
       "kp_climb": 3.5,
       "altitude_hold": true,
+      "flip_rate_deg": 540.0,
+      "flip_boost_time": 0.14,
+      "flip_lead_rad": 0.95,
       "expo": 0.35,
       "description": "Slow, buttery smooth movement with capped tilt for film-grade captures."
     },
@@ -46,6 +49,9 @@
       "kp_rate": 35.0,
       "kp_climb": 4.0,
       "altitude_hold": true,
+      "flip_rate_deg": 720.0,
+      "flip_boost_time": 0.12,
+      "flip_lead_rad": 0.90,
       "expo": 0.25,
       "description": "Balanced flight model with stable auto-leveling and altitude hold."
     },
@@ -62,6 +68,9 @@
       "kp_climb": 5.0,
       "altitude_hold": false,
       "stunts_enabled": true,
+      "flip_rate_deg": 840.0,
+      "flip_boost_time": 0.10,
+      "flip_lead_rad": 0.85,
       "expo": 0.2,
       "description": "High agility, steep banking, and high top speed for experienced pilots."
     },
@@ -78,6 +87,9 @@
       "kp_climb": 4.0,
       "altitude_hold": true,
       "stunts_enabled": true,
+      "flip_rate_deg": 720.0,
+      "flip_boost_time": 0.12,
+      "flip_lead_rad": 0.90,
       "expo": 0.15,
       "description": "Forgiving physics, assisted braking, coin magnet, and aerobatic stunt keys."
     },
@@ -94,6 +106,9 @@
       "kp_climb": 4.0,
       "altitude_hold": false,
       "stunts_enabled": true,
+      "flip_rate_deg": 900.0,
+      "flip_boost_time": 0.08,
+      "flip_lead_rad": 0.80,
       "expo": 0.1,
       "description": "Pure manual rate control with zero auto-level. Inverted flight enabled."
     }

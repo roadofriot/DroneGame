@@ -102,3 +102,38 @@ stateDiagram-v2
 | `ANY AIRBORNE` | Inversion Tilt | `CRASHED` | Body tilt $> 100^\circ$ sustained for $> 0.5\text{s}$ at altitude $\le 5.0\text{m}$. |
 | `ANY AIRBORNE` | Impact | `CRASHED` | Collision impulse $\ge 12.0\text{ N/kg}$. |
 | `CRASHED` | `reset` | `DISARMED` | Overloaded Space recover removed; strictly requires Reset (`R` / Gamepad `Y`). |
+
+---
+
+### 5. Aerobatic Flip System (`FlipController.gd`, Phase 5)
+
+```mermaid
+stateDiagram-v2
+    [*] --> IDLE
+    IDLE --> BOOST: request(dir, AGL>=4m, Battery>=20%, !Acro)
+    BOOST --> ROTATE: t >= boost_time (0.12s, 1.6x thrust)
+    ROTATE --> RECOVER: angle >= TAU - lead (lead ~0.90 rad) or timeout (1.5s)
+    RECOVER --> IDLE: up.y > 0.9 and |w| < 1.5 rad/s or timeout (1.5s)
+```
+
+- **Architecture**: `FlipController` is a pure-logic `RefCounted` class with zero node/scene tree access.
+- **Preconditions**:
+  - State must be `FLYING` (`state_machine.is_flying()`).
+  - Altitude must be $\ge 4.0\text{ m AGL}$ to prevent ground strikes.
+  - Battery capacity must be $\ge 20\%$ (`battery >= 0.20`).
+  - Active profile must NOT be `acro` (manual rate pilots execute unassisted flips).
+  - No concurrent flip already active (`phase == Phase.IDLE`).
+- **4-Way Cardinal Axes in Godot 3D Coordinate Space**:
+  - **Front Flip** (`dir.y > 0`): Negative X (`Vector3(-1, 0, 0)`) — nose down pitch rotation.
+  - **Back Flip** (`dir.y <= 0`): Positive X (`Vector3(1, 0, 0)`) — nose up pitch rotation. Stick centered defaults to back flip.
+  - **Left Roll** (`dir.x < 0`): Positive Z (`Vector3(0, 0, 1)`) — bank left roll rotation.
+  - **Right Roll** (`dir.x > 0`): Negative Z (`Vector3(0, 0, -1)`) — bank right roll rotation.
+- **Phase Execution & Thrust Management**:
+  - `BOOST`: 0.12s vertical upward impulse at $1.6\times$ hover thrust to build positive vertical momentum before roll inversion.
+  - `ROTATE`: Commands target angular velocity $\mathbf{\omega}_{\text{target}} = \text{axis}_{\text{local}} \cdot 720^\circ/\text{s}$. **Thrust is cut to $0.0\times$ whenever inverted ($u_y < 0.0$)**, completely preventing inverted motor thrust from driving the drone downward. Accumulates rotated angle $\int |\mathbf{\omega} \cdot \mathbf{n}| dt$ and exits at $\tau - \text{lead}$ ($\approx 308.5^\circ$ with lead $= 0.90\text{ rad}$).
+  - `RECOVER`: Returns control authority to `FlightController` angle-mode auto-leveling at $1.2\times$ thrust. Transitions cleanly to `IDLE` when upright ($u_y > 0.90$) and settled ($|\mathbf{\omega}| < 1.5\text{ rad/s}$).
+  - `SAFETY TIMEOUT`: 1.5s per-phase timeout safely hands control back to normal angle mode without forcing a crash.
+- **Flight State & Stick Isolation**:
+  - During flip execution, `FlightStateMachine` enters `State.FLIPPING`.
+  - Manual pitch, roll, and yaw stick commands are isolated to prevent pilot interference mid-rotation.
+  - Inverted tilt crash detection is bypassed during `State.FLIPPING`.

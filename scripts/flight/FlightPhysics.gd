@@ -8,6 +8,7 @@ extends RigidBody3D
 const ControlFrame = preload("res://scripts/input/ControlFrame.gd")
 const FlightController = preload("res://scripts/flight/FlightController.gd")
 const FlightStateMachine = preload("res://scripts/flight/FlightStateMachine.gd")
+const FlipController = preload("res://scripts/flight/FlipController.gd")
 
 signal telemetry_updated(data: Dictionary)
 signal flight_mode_changed(mode_name: String)
@@ -68,6 +69,8 @@ var active_profile_name: String = "normal"
 var active_profile: Dictionary = {}
 var all_profiles: Dictionary = {}
 var flight_controller: FlightController = null
+var flip_controller: FlipController = null
+var battery: float = 1.0 # Normalized battery remaining [0.0, 1.0] (default 1.0 until Phase 7)
 
 # Motor RPMs [0.0 .. 1.0] for FL, FR, RL, RR
 var motor_rpms: Array[float] = [0.0, 0.0, 0.0, 0.0]
@@ -114,6 +117,7 @@ var yaw_rate_p: float = 4.2
 func _init() -> void:
 	flight_controller = FlightController.new()
 	state_machine = FlightStateMachine.new()
+	flip_controller = FlipController.new()
 	_load_profiles()
 
 func _ready() -> void:
@@ -135,6 +139,8 @@ func _ready() -> void:
 		input_router.reset_requested.connect(_on_reset_requested)
 		input_router.flight_mode_cycle_requested.connect(_on_flight_mode_cycle_requested)
 		input_router.stunt_requested.connect(_on_stunt_requested)
+		if input_router.has_signal("flip_pressed"):
+			input_router.flip_pressed.connect(_on_flip_pressed)
 		if input_router.has_signal("emergency_stop_pressed"):
 			input_router.emergency_stop_pressed.connect(_on_emergency_stop_pressed)
 		if input_router.has_signal("emergency_cut_requested"):
@@ -240,6 +246,11 @@ func set_flight_profile(profile_name: String) -> void:
 				"max_motor_thrust_n": max_thrust_per_motor
 			})
 			flight_controller.configure(active_profile, phys_data)
+		if flip_controller:
+			var flip_rate = active_profile.get("flip_rate_deg", 720.0)
+			var boost_t = active_profile.get("flip_boost_time", 0.12)
+			var lead_r = active_profile.get("flip_lead_rad", 0.90)
+			flip_controller.configure(flip_rate, boost_t, lead_r)
 		flight_mode_changed.emit(active_profile.get("name", profile_name.capitalize()))
 
 # --- Physics Process Loop (Fixed 60Hz Timestep) ---
@@ -363,6 +374,7 @@ func _update_battery(delta: float) -> void:
 	var drain_mah = (current_amps * 1000.0) * (delta / 3600.0)
 	battery_remaining_mah = maxf(0.0, battery_remaining_mah - drain_mah)
 	battery_percent = (battery_remaining_mah / battery_capacity_mah) * 100.0
+	battery = battery_percent / 100.0
 	battery_voltage = 13.6 + (battery_percent / 100.0) * 3.2
 
 # --- State Process Handlers ---
@@ -437,6 +449,22 @@ func _process_hover(delta: float) -> void:
 	_calculate_auto_level_rpms(hold_thrust, 0.0, 0.0, 0.0, delta)
 
 func _process_flying(delta: float) -> void:
+	# Phase 5: FlipController aerobatic maneuvers take precedence during active flips
+	if flip_controller and flip_controller.is_active():
+		var cur_b = global_transform.basis.orthonormalized() if (is_inside_tree() and is_node_ready()) else transform.basis.orthonormalized()
+		var local_w = cur_b.transposed() * angular_velocity
+		var up_y = cur_b.y.y
+		var override = flip_controller.step(local_w, up_y, delta)
+		var neutral_frame = ControlFrame.new(0.0, 0.0, 0.0, 0.0)
+		var out = flight_controller.step(cur_b, angular_velocity, linear_velocity, neutral_frame, override, delta)
+		for i in range(4):
+			target_motor_rpms[i] = clampf(out.motors[i] / max_thrust_per_motor, 0.0, 1.0)
+		if not flip_controller.is_active():
+			if state_machine:
+				state_machine.transition_to(FlightStateMachine.State.FLYING, "FLIP_COMPLETED")
+				drone_state_changed.emit("FLYING")
+		return
+
 	if stunt_engine and stunt_engine.is_performing_stunt():
 		stunt_engine.process_stunt_physics(delta, self)
 		return
@@ -623,6 +651,8 @@ func cancel_rth() -> void:
 
 func _on_emergency_stop_pressed() -> void:
 	print("[SAFETY] EMERGENCY_STOP_TRIGGERED — Zeroing motors immediately")
+	if flip_controller:
+		flip_controller.cancel()
 	for i in range(4):
 		target_motor_rpms[i] = 0.0
 		motor_rpms[i] = 0.0
@@ -637,6 +667,8 @@ func emergency_motor_cut() -> void:
 
 func reset_to_pad() -> void:
 	print("[COMMAND] RESET_REQUESTED")
+	if flip_controller:
+		flip_controller.cancel()
 	if stunt_engine and stunt_engine.is_stunting:
 		stunt_engine.is_stunting = false
 		stunt_engine.stunt_phase = StuntEngine.StuntState.IDLE
@@ -651,6 +683,7 @@ func reset_to_pad() -> void:
 		target_motor_rpms[i] = 0.0
 	battery_remaining_mah = battery_capacity_mah
 	battery_percent = 100.0
+	battery = 1.0
 	total_flight_time = 0.0
 	current_state = DroneState.DISARMED
 	drone_state_changed.emit("DISARMED")
@@ -801,8 +834,32 @@ func _on_reset_requested() -> void:
 	reset_to_pad()
 
 func _on_stunt_requested(stunt_type: String) -> void:
+	if flip_controller and flip_controller.is_active():
+		return
 	if stunt_engine:
 		stunt_engine.trigger_stunt(stunt_type, self)
+
+func _on_flip_pressed(dir: Vector2) -> void:
+	if stunt_engine and stunt_engine.is_performing_stunt():
+		return
+	perform_flip(dir)
+
+func perform_flip(dir: Vector2 = Vector2(0, -1)) -> bool:
+	if not flip_controller or not state_machine:
+		return false
+	if not state_machine.is_flying():
+		return false
+	var is_acro: bool = (active_profile_name == "acro" or active_profile.get("name", "") == "Acro / Manual")
+	var requested: bool = flip_controller.request(dir, altitude_agl, battery, is_acro)
+	if requested:
+		state_machine.transition_to(FlightStateMachine.State.FLIPPING, "FLIP_STARTED")
+		drone_state_changed.emit("FLIPPING")
+		print("[FLIGHT] FLIP_INITIATED — Direction: %s" % str(dir))
+		return true
+	return false
+
+func is_flipping() -> bool:
+	return flip_controller != null and flip_controller.is_active()
 
 func _on_flight_mode_cycle_requested() -> void:
 	var mode_keys = ["normal", "cine", "sport", "arcade", "acro"]
