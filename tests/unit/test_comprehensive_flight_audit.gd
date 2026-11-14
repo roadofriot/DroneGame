@@ -271,23 +271,42 @@ func test_013_reset(drone: FlightPhysics) -> Dictionary:
 	var evidence = "Pad reset verified: State=DISARMED, Linear Velocity zeroed"
 	return {"passed": pass_ok, "evidence": evidence}
 
-# TEST 014 — Input Release
+# TEST 014 — Input Release & Simultaneous Dual-Stick Operation
 func test_014_input_release(hud: FlightHUD, router: InputRouter) -> Dictionary:
-	var stick = hud.get_node("LeftCluster/LeftJoystick")
-	if not stick.is_node_ready(): stick._ready()
+	var left_stick = hud.get_node("LeftCluster/LeftJoystick")
+	var right_stick = hud.get_node("RightCluster/RightJoystick")
+	if not left_stick.is_node_ready(): left_stick._ready()
+	if not right_stick.is_node_ready(): right_stick._ready()
 
-	var touch = InputEventScreenTouch.new()
-	touch.index = 0
-	touch.pressed = true
-	touch.position = stick.base_center + Vector2(0, -50)
-	stick._gui_input(touch)
+	# Finger 0 on Left Stick
+	var touch0 = InputEventScreenTouch.new()
+	touch0.index = 0
+	touch0.pressed = true
+	touch0.position = left_stick.base_center + Vector2(0, -60)
+	left_stick._gui_input(touch0)
 
-	var was_dragging = stick.is_dragging
-	touch.pressed = false
-	stick._gui_input(touch)
+	# Finger 1 on Right Stick SIMULTANEOUSLY
+	var touch1 = InputEventScreenTouch.new()
+	touch1.index = 1
+	touch1.pressed = true
+	touch1.position = right_stick.base_center + Vector2(60, 0)
+	right_stick._gui_input(touch1)
 
-	var pass_ok = was_dragging and not stick.is_dragging and router.virtual_throttle == 0.0
-	var evidence = "Touch input released: is_dragging=false, virtual_throttle=0.0"
+	var both_active = left_stick.is_dragging and right_stick.is_dragging
+	var both_outputs = router.virtual_throttle > 0.1 and router.virtual_roll > 0.1
+
+	# Release Finger 0: Right Stick MUST stay dragging!
+	touch0.pressed = false
+	left_stick._gui_input(touch0)
+	var right_still_dragging = right_stick.is_dragging and router.virtual_roll > 0.1
+
+	# Release Finger 1
+	touch1.pressed = false
+	right_stick._gui_input(touch1)
+	var both_released = not left_stick.is_dragging and not right_stick.is_dragging
+
+	var pass_ok = both_active and both_outputs and right_still_dragging and both_released
+	var evidence = "Simultaneous dual-stick touch verified: Both active concurrently, independent pointer release"
 	return {"passed": pass_ok, "evidence": evidence}
 
 # TEST 015 — Boundary Detection
