@@ -3,26 +3,26 @@
 [ext_resource type="Script" path="res://scripts/ui/PauseMenu.gd" id="1_pause"]
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_Backdrop"]
-bg_color = Color(0, 0, 0, 0.75)
+bg_color = Color(0, 0, 0, 0.78)
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_Card"]
-bg_color = Color(0.08, 0.12, 0.16, 0.95)
+bg_color = Color(0.06, 0.1, 0.16, 0.96)
 border_width_left = 2
 border_width_top = 2
 border_width_right = 2
 border_width_bottom = 2
-border_color = Color(0.2, 0.75, 1, 0.8)
+border_color = Color(0.2, 0.8, 1, 0.85)
 corner_radius_top_left = 10
 corner_radius_top_right = 10
 corner_radius_bottom_right = 10
 corner_radius_bottom_left = 10
-content_margin_left = 32.0
-content_margin_top = 28.0
-content_margin_right = 32.0
-content_margin_bottom = 28.0
+content_margin_left = 24.0
+content_margin_top = 20.0
+content_margin_right = 24.0
+content_margin_bottom = 20.0
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_Btn"]
-bg_color = Color(0.12, 0.38, 0.58, 0.9)
+bg_color = Color(0.12, 0.36, 0.56, 0.9)
 border_width_left = 1
 border_width_top = 1
 border_width_right = 1
@@ -33,9 +33,9 @@ corner_radius_top_right = 6
 corner_radius_bottom_right = 6
 corner_radius_bottom_left = 6
 content_margin_left = 16.0
-content_margin_top = 10.0
+content_margin_top = 8.0
 content_margin_right = 16.0
-content_margin_bottom = 10.0
+content_margin_bottom = 8.0
 
 [node name="PauseMenu" type="Control"]
 process_mode = 3
@@ -63,33 +63,299 @@ anchor_left = 0.5
 anchor_top = 0.5
 anchor_right = 0.5
 anchor_bottom = 0.5
-offset_left = -160.0
-offset_top = -140.0
-offset_right = 160.0
-offset_bottom = 140.0
+offset_left = -280.0
+offset_top = -240.0
+offset_right = 280.0
+offset_bottom = 240.0
 grow_horizontal = 2
 grow_vertical = 2
 theme_override_styles/panel = SubResource("StyleBoxFlat_Card")
 
 [node name="VBox" type="VBoxContainer" parent="Card"]
 layout_mode = 2
-theme_override_constants/separation = 16
+theme_override_constants/separation = 12
 
 [node name="LabelTitle" type="Label" parent="Card/VBox"]
 layout_mode = 2
 theme_override_colors/font_color = Color(0.2, 0.85, 1, 1)
 theme_override_font_sizes/font_size = 20
-text = "FLIGHT PAUSED"
+text = "FLIGHT PAUSED & SETTINGS"
 horizontal_alignment = 1
 
-[node name="BtnResume" type="Button" parent="Card/VBox"]
-custom_minimum_size = Vector2(180, 42)
+[node name="TabContainer" type="TabContainer" parent="Card/VBox"]
+custom_minimum_size = Vector2(0, 320)
 layout_mode = 2
-theme_override_styles/normal = SubResource("StyleBoxFlat_Btn")
-text = "RESUME"
+size_flags_vertical = 3
+current_tab = 0
 
-[node name="BtnRestart" type="Button" parent="Card/VBox"]
-custom_minimum_size = Vector2(180, 42)
+[node name="Controls" type="TabBar" parent="Card/VBox/TabContainer"]
 layout_mode = 2
+text = "General & Inverts"
+
+[node name="Scroll" type="ScrollContainer" parent="Card/VBox/TabContainer/Controls"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 8.0
+offset_top = 8.0
+offset_right = -8.0
+offset_bottom = -8.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="VBox" type="VBoxContainer" parent="Card/VBox/TabContainer/Controls/Scroll"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 12
+
+[node name="HBoxFOV" type="HBoxContainer" parent="Card/VBox/TabContainer/Controls/Scroll/VBox"]
+layout_mode = 2
+
+[node name="Label" type="Label" parent="Card/VBox/TabContainer/Controls/Scroll/VBox/HBoxFOV"]
+custom_minimum_size = Vector2(140, 0)
+layout_mode = 2
+text = "Camera FOV:"
+
+[node name="SliderFOV" type="HSlider" parent="Card/VBox/TabContainer/Controls/Scroll/VBox/HBoxFOV"]
+layout_mode = 2
+size_flags_horizontal = 3
+min_value = 60.0
+max_value = 105.0
+value = 75.0
+
+[node name="LabelFOVVal" type="Label" parent="Card/VBox/TabContainer/Controls/Scroll/VBox/HBoxFOV"]
+custom_minimum_size = Vector2(40, 0)
+layout_mode = 2
+text = "75°"
+horizontal_alignment = 2
+
+[node name="BtnUnits" type="Button" parent="Card/VBox/TabContainer/Controls/Scroll/VBox"]
+custom_minimum_size = Vector2(0, 36)
+layout_mode = 2
+text = "Units: METRIC"
+
+[node name="BtnTrimReset" type="Button" parent="Card/VBox/TabContainer/Controls/Scroll/VBox"]
+custom_minimum_size = Vector2(0, 36)
+layout_mode = 2
+text = "Reset Sub-Trims to Center"
+
+[node name="LabelInverts" type="Label" parent="Card/VBox/TabContainer/Controls/Scroll/VBox"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.2, 0.8, 1, 1)
+text = "Axis Inversion Toggles:"
+
+[node name="GridInverts" type="GridContainer" parent="Card/VBox/TabContainer/Controls/Scroll/VBox"]
+layout_mode = 2
+columns = 2
+
+[node name="CheckInvPitch" type="CheckBox" parent="Card/VBox/TabContainer/Controls/Scroll/VBox/GridInverts"]
+layout_mode = 2
+text = "Invert Pitch"
+
+[node name="CheckInvRoll" type="CheckBox" parent="Card/VBox/TabContainer/Controls/Scroll/VBox/GridInverts"]
+layout_mode = 2
+text = "Invert Roll"
+
+[node name="CheckInvYaw" type="CheckBox" parent="Card/VBox/TabContainer/Controls/Scroll/VBox/GridInverts"]
+layout_mode = 2
+text = "Invert Yaw"
+
+[node name="CheckInvThrottle" type="CheckBox" parent="Card/VBox/TabContainer/Controls/Scroll/VBox/GridInverts"]
+layout_mode = 2
+text = "Invert Throttle"
+
+[node name="Tuning" type="TabBar" parent="Card/VBox/TabContainer"]
+visible = false
+layout_mode = 2
+text = "Expo & Deadzones"
+
+[node name="Scroll" type="ScrollContainer" parent="Card/VBox/TabContainer/Tuning"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 8.0
+offset_top = 8.0
+offset_right = -8.0
+offset_bottom = -8.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="VBox" type="VBoxContainer" parent="Card/VBox/TabContainer/Tuning/Scroll"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 10
+
+[node name="ExpoCine" type="HBoxContainer" parent="Card/VBox/TabContainer/Tuning/Scroll/VBox"]
+layout_mode = 2
+
+[node name="Label" type="Label" parent="Card/VBox/TabContainer/Tuning/Scroll/VBox/ExpoCine"]
+custom_minimum_size = Vector2(160, 0)
+layout_mode = 2
+text = "Cine Profile Expo:"
+
+[node name="Slider" type="HSlider" parent="Card/VBox/TabContainer/Tuning/Scroll/VBox/ExpoCine"]
+layout_mode = 2
+size_flags_horizontal = 3
+max_value = 0.8
+step = 0.05
+value = 0.35
+
+[node name="DeadCine" type="HBoxContainer" parent="Card/VBox/TabContainer/Tuning/Scroll/VBox"]
+layout_mode = 2
+
+[node name="Label" type="Label" parent="Card/VBox/TabContainer/Tuning/Scroll/VBox/DeadCine"]
+custom_minimum_size = Vector2(160, 0)
+layout_mode = 2
+text = "Cine Deadzone:"
+
+[node name="Slider" type="HSlider" parent="Card/VBox/TabContainer/Tuning/Scroll/VBox/DeadCine"]
+layout_mode = 2
+size_flags_horizontal = 3
+max_value = 0.3
+step = 0.02
+value = 0.08
+
+[node name="ExpoNorm" type="HBoxContainer" parent="Card/VBox/TabContainer/Tuning/Scroll/VBox"]
+layout_mode = 2
+
+[node name="Label" type="Label" parent="Card/VBox/TabContainer/Tuning/Scroll/VBox/ExpoNorm"]
+custom_minimum_size = Vector2(160, 0)
+layout_mode = 2
+text = "Normal Profile Expo:"
+
+[node name="Slider" type="HSlider" parent="Card/VBox/TabContainer/Tuning/Scroll/VBox/ExpoNorm"]
+layout_mode = 2
+size_flags_horizontal = 3
+max_value = 0.8
+step = 0.05
+value = 0.25
+
+[node name="DeadNorm" type="HBoxContainer" parent="Card/VBox/TabContainer/Tuning/Scroll/VBox"]
+layout_mode = 2
+
+[node name="Label" type="Label" parent="Card/VBox/TabContainer/Tuning/Scroll/VBox/DeadNorm"]
+custom_minimum_size = Vector2(160, 0)
+layout_mode = 2
+text = "Normal Deadzone:"
+
+[node name="Slider" type="HSlider" parent="Card/VBox/TabContainer/Tuning/Scroll/VBox/DeadNorm"]
+layout_mode = 2
+size_flags_horizontal = 3
+max_value = 0.3
+step = 0.02
+value = 0.06
+
+[node name="ExpoSport" type="HBoxContainer" parent="Card/VBox/TabContainer/Tuning/Scroll/VBox"]
+layout_mode = 2
+
+[node name="Label" type="Label" parent="Card/VBox/TabContainer/Tuning/Scroll/VBox/ExpoSport"]
+custom_minimum_size = Vector2(160, 0)
+layout_mode = 2
+text = "Sport Profile Expo:"
+
+[node name="Slider" type="HSlider" parent="Card/VBox/TabContainer/Tuning/Scroll/VBox/ExpoSport"]
+layout_mode = 2
+size_flags_horizontal = 3
+max_value = 0.8
+step = 0.05
+value = 0.15
+
+[node name="DeadSport" type="HBoxContainer" parent="Card/VBox/TabContainer/Tuning/Scroll/VBox"]
+layout_mode = 2
+
+[node name="Label" type="Label" parent="Card/VBox/TabContainer/Tuning/Scroll/VBox/DeadSport"]
+custom_minimum_size = Vector2(160, 0)
+layout_mode = 2
+text = "Sport Deadzone:"
+
+[node name="Slider" type="HSlider" parent="Card/VBox/TabContainer/Tuning/Scroll/VBox/DeadSport"]
+layout_mode = 2
+size_flags_horizontal = 3
+max_value = 0.3
+step = 0.02
+value = 0.04
+
+[node name="ExpoAcro" type="HBoxContainer" parent="Card/VBox/TabContainer/Tuning/Scroll/VBox"]
+layout_mode = 2
+
+[node name="Label" type="Label" parent="Card/VBox/TabContainer/Tuning/Scroll/VBox/ExpoAcro"]
+custom_minimum_size = Vector2(160, 0)
+layout_mode = 2
+text = "Acro Profile Expo:"
+
+[node name="Slider" type="HSlider" parent="Card/VBox/TabContainer/Tuning/Scroll/VBox/ExpoAcro"]
+layout_mode = 2
+size_flags_horizontal = 3
+max_value = 0.8
+step = 0.05
+value = 0.1
+
+[node name="DeadAcro" type="HBoxContainer" parent="Card/VBox/TabContainer/Tuning/Scroll/VBox"]
+layout_mode = 2
+
+[node name="Label" type="Label" parent="Card/VBox/TabContainer/Tuning/Scroll/VBox/DeadAcro"]
+custom_minimum_size = Vector2(160, 0)
+layout_mode = 2
+text = "Acro Deadzone:"
+
+[node name="Slider" type="HSlider" parent="Card/VBox/TabContainer/Tuning/Scroll/VBox/DeadAcro"]
+layout_mode = 2
+size_flags_horizontal = 3
+max_value = 0.3
+step = 0.02
+value = 0.03
+
+[node name="Keybinds" type="TabBar" parent="Card/VBox/TabContainer"]
+visible = false
+layout_mode = 2
+text = "Keybinds"
+
+[node name="LabelRebindStatus" type="Label" parent="Card/VBox/TabContainer/Keybinds"]
+layout_mode = 1
+anchors_preset = 10
+anchor_right = 1.0
+offset_left = 8.0
+offset_top = 6.0
+offset_right = -8.0
+offset_bottom = 28.0
+grow_horizontal = 2
+theme_override_colors/font_color = Color(0.2, 0.85, 1, 1)
+theme_override_font_sizes/font_size = 12
+text = "Click a key button to rebind. Duplicate bindings are rejected."
+
+[node name="Scroll" type="ScrollContainer" parent="Card/VBox/TabContainer/Keybinds"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 8.0
+offset_top = 34.0
+offset_right = -8.0
+offset_bottom = -8.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="RebindList" type="VBoxContainer" parent="Card/VBox/TabContainer/Keybinds/Scroll"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 6
+
+[node name="HBoxActions" type="HBoxContainer" parent="Card/VBox"]
+layout_mode = 2
+theme_override_constants/separation = 16
+
+[node name="BtnResume" type="Button" parent="Card/VBox/HBoxActions"]
+custom_minimum_size = Vector2(140, 42)
+layout_mode = 2
+size_flags_horizontal = 3
 theme_override_styles/normal = SubResource("StyleBoxFlat_Btn")
-text = "RESTART / RESET"
+text = "RESUME FLIGHT"
+
+[node name="BtnRestart" type="Button" parent="Card/VBox/HBoxActions"]
+custom_minimum_size = Vector2(140, 42)
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_styles/normal = SubResource("StyleBoxFlat_Btn")
+text = "RESET TO PAD"

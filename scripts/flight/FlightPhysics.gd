@@ -881,9 +881,13 @@ func _apply_motor_forces(delta: float) -> void:
 func _emit_telemetry() -> void:
 	var home_dist = get_home_distance()
 	var est_return_sec = (home_dist / maxf(ground_speed, 6.0)) if home_dist > 1.0 else 0.0
+	var f_mode = flight_mode_manager.get_mode_name() if flight_mode_manager else "ANGLE"
+	var time_rem = battery_model.get_estimated_time_remaining_seconds() if battery_model else 900.0
+
 	var data = {
 		"state": DroneState.keys()[current_state],
 		"profile": active_profile.get("name", "Normal"),
+		"flight_mode": f_mode,
 		"altitude_agl": altitude_agl,
 		"altitude_msl": altitude_msl,
 		"speed": ground_speed,
@@ -893,7 +897,10 @@ func _emit_telemetry() -> void:
 		"roll": roll_deg,
 		"battery_pct": battery_percent,
 		"battery_volts": battery_voltage,
+		"battery_time_remaining": time_rem,
 		"motor_rpms": motor_rpms,
+		"drone_pos": global_position,
+		"home_pos": spawn_transform.origin,
 		"home_distance": home_dist,
 		"est_rth_time": est_return_sec,
 		"flight_time": total_flight_time,

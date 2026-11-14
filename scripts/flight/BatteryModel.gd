@@ -94,8 +94,14 @@ func step(total_thrust_n: float, is_boost: bool, delta: float) -> Dictionary:
 		"battery_pct": pct,
 		"voltage_v": get_battery_voltage(),
 		"current_power_w": p_total,
+		"est_time_remaining_s": get_estimated_time_remaining_seconds(p_total),
 		"flip_allowed": is_flip_allowed(),
 		"warn_low": trigger_warn,
 		"auto_rth": trigger_rth,
 		"force_land": trigger_land
 	}
+
+func get_estimated_time_remaining_seconds(current_w: float = 0.0) -> float:
+	var p = current_w if current_w > 10.0 else (base_avionics_power_w + 120.0)
+	return (remaining_wh / p) * 3600.0
+

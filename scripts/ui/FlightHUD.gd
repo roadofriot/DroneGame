@@ -1,15 +1,23 @@
 class_name FlightHUD
 extends CanvasLayer
 
-## FlightHUD: Professional Drone Telemetry HUD & Remote Controller Interface.
-## Built to exactly match the Drone Controller Guide specification:
-## - Top bar: Location, GPS strength, Battery %, RC Signal strength, Satellites, 4K 60fps REC, Menu.
-## - Left vertical: Gimbal Tilt / Zoom adjustment (+, Reset, -).
-## - Left stick: Throttle / Yaw with 8 directional arrows and bilingual axis indicators.
-## - Center controls: Cine/Normal/Sport mode buttons, Failsafe, Take Off / Land, RTH, Camera View toggle.
-## - Right side: Telemetry stats (H, HS, D) and Obstacle Avoidance Sensor status.
-## - Right stick: Pitch / Roll with 8 directional arrows and bilingual axis indicators.
-## - Settings drawer: Drone motor sound ON/OFF, Engine sound profile, Master audio, Reset to pad, Worlds.
+const ArtificialHorizon = preload("res://scripts/ui/ArtificialHorizon.gd")
+const HeadingStrip = preload("res://scripts/ui/HeadingStrip.gd")
+const HomeArrow = preload("res://scripts/ui/HomeArrow.gd")
+const FlightModeManager = preload("res://scripts/flight/FlightModeManager.gd")
+const FlipController = preload("res://scripts/flight/FlipController.gd")
+
+## FlightHUD: Professional Drone Telemetry HUD & Remote Controller Interface (Phase 8).
+## Features:
+## - Vector Artificial Horizon (pitch ladder & roll line)
+## - Vector Heading Strip (0..360° with cardinal marks)
+## - Dynamic Home Arrow + Distance
+## - Dual Speed (m/s & km/h / mph)
+## - Dual Altitude (AGL & MSL) and Vertical Speed (V/S)
+## - Battery bar / % / estimated flight time remaining
+## - Flight mode badge (ANGLE, HORIZON, ACRO) and State badge
+## - Warning banners (LOW BATTERY, RTH ACTIVE, TOO LOW FOR FLIP, BRAKE ACTIVE)
+## - Gated Contextual Touch Controls (Takeoff/Land, Flip, Mode, RTH, Brake)
 
 signal world_select_requested
 
@@ -17,6 +25,14 @@ signal world_select_requested
 @export var flight_physics: FlightPhysics
 @export var camera_director: FlightCameraDirector
 @export var audio_director: AudioDirector
+
+# Settings
+var settings_service: SettingsService
+
+# Procedural Vector HUD Elements
+@onready var artificial_horizon: ArtificialHorizon = get_node_or_null("CenterCluster/ArtificialHorizon")
+@onready var heading_strip: HeadingStrip = get_node_or_null("HeadingStrip")
+@onready var home_arrow: HomeArrow = get_node_or_null("RightTelemetryCluster/HomeArrow")
 
 # Virtual Joysticks
 @onready var left_joystick: VirtualJoystick = get_node_or_null("LeftCluster/LeftJoystick")
@@ -26,9 +42,12 @@ signal world_select_requested
 @onready var btn_location: Button = get_node_or_null("TopBar/HBox/BtnLocation")
 @onready var label_gps: Label = get_node_or_null("TopBar/HBox/GPSPill/LabelGPS")
 @onready var label_battery: Label = get_node_or_null("TopBar/HBox/BatteryPill/LabelBattery")
+@onready var battery_progress_bar: ProgressBar = get_node_or_null("TopBar/HBox/BatteryPill/BatteryProgressBar")
 @onready var label_signal: Label = get_node_or_null("TopBar/HBox/SignalPill/LabelSignal")
 @onready var label_satellites: Label = get_node_or_null("TopBar/HBox/SatPill/LabelSatellites")
 @onready var label_camera_status: Label = get_node_or_null("TopBar/HBox/CamStatusPill/LabelCameraStatus")
+@onready var label_mode_badge: Label = get_node_or_null("TopBar/HBox/ModeBadgePill/LabelModeBadge")
+@onready var label_state_badge: Label = get_node_or_null("TopBar/HBox/StateBadgePill/LabelStateBadge")
 @onready var btn_menu: Button = get_node_or_null("TopBar/HBox/BtnMenu")
 
 # Left Zoom / Gimbal Controls
@@ -40,9 +59,11 @@ signal world_select_requested
 @onready var btn_mode_cine: Button = get_node_or_null("CenterControls/ModeContainer/ModeHBox/BtnModeCine")
 @onready var btn_mode_normal: Button = get_node_or_null("CenterControls/ModeContainer/ModeHBox/BtnModeNormal")
 @onready var btn_mode_sport: Button = get_node_or_null("CenterControls/ModeContainer/ModeHBox/BtnModeSport")
+@onready var btn_mode_cycle: Button = get_node_or_null("CenterControls/ModeContainer/ModeHBox/BtnModeCycle")
 @onready var btn_failsafe: Button = get_node_or_null("CenterControls/ActionHBox/BtnFailsafe")
 @onready var btn_takeoff: Button = get_node_or_null("CenterControls/ActionHBox/BtnTakeoff")
 @onready var btn_rth: Button = get_node_or_null("CenterControls/ActionHBox/BtnRTH")
+@onready var btn_brake: Button = get_node_or_null("CenterControls/ActionHBox/BtnBrake")
 @onready var btn_cam_toggle: Button = get_node_or_null("CenterControls/ActionHBox/BtnCamToggle")
 @onready var btn_flip: Button = get_node_or_null("CenterControls/ActionHBox/BtnFlip")
 
@@ -50,6 +71,7 @@ signal world_select_requested
 @onready var label_h: Label = get_node_or_null("RightTelemetryCluster/TelemetryBox/VBox/LabelH")
 @onready var label_hs: Label = get_node_or_null("RightTelemetryCluster/TelemetryBox/VBox/LabelHS")
 @onready var label_d: Label = get_node_or_null("RightTelemetryCluster/TelemetryBox/VBox/LabelD")
+@onready var label_vs: Label = get_node_or_null("RightTelemetryCluster/TelemetryBox/VBox/LabelVS")
 @onready var sensor_icon: Label = get_node_or_null("RightTelemetryCluster/SensorBox/HBox/SensorIcon")
 @onready var sensor_label: Label = get_node_or_null("RightTelemetryCluster/SensorBox/HBox/SensorLabel")
 
@@ -74,8 +96,14 @@ signal world_select_requested
 
 var banner_hide_timer: float = 0.0
 var active_flight_mode: String = "normal"
+var _last_low_battery_alert: float = 100.0
+var current_altitude_agl: float = 0.0
+var current_drone_state: String = "DISARMED"
 
 func _ready() -> void:
+	if not settings_service:
+		settings_service = SettingsService.new()
+
 	if not audio_director:
 		audio_director = get_node_or_null("../AudioDirector")
 	if not flight_physics:
@@ -111,6 +139,8 @@ func _ready() -> void:
 		btn_takeoff.pressed.connect(_on_btn_takeoff_pressed)
 	if btn_rth:
 		btn_rth.pressed.connect(_on_btn_rth_pressed)
+	if btn_brake:
+		btn_brake.pressed.connect(_on_btn_brake_pressed)
 	if btn_failsafe:
 		btn_failsafe.pressed.connect(_on_btn_failsafe_pressed)
 	if btn_cam_toggle:
@@ -125,6 +155,8 @@ func _ready() -> void:
 		btn_mode_normal.pressed.connect(func(): _set_flight_mode_profile("normal"))
 	if btn_mode_sport:
 		btn_mode_sport.pressed.connect(func(): _set_flight_mode_profile("sport"))
+	if btn_mode_cycle:
+		btn_mode_cycle.pressed.connect(_on_btn_mode_cycle_pressed)
 
 	# Top Bar Buttons
 	if btn_location:
@@ -182,7 +214,6 @@ func _on_left_stick_moved(vec: Vector2) -> void:
 	if input_router:
 		input_router.set_virtual_left_stick(vec.x, vec.y)
 
-	# Auto-takeoff assistance when player pushes throttle stick up while disarmed
 	if flight_physics and flight_physics.current_state == FlightPhysics.DroneState.DISARMED:
 		if vec.y > 0.35:
 			flight_physics.takeoff()
@@ -218,31 +249,37 @@ func _on_btn_zoom_out_pressed() -> void:
 		_show_banner("गिम्बल / क्यामेरा जुम − (Zoom Out)", 1.2)
 
 # -----------------------------------------------------------------------------
-# Mode Selection (Cine, Normal, Sport)
+# Flight Mode Handling
 # -----------------------------------------------------------------------------
 func _set_flight_mode_profile(mode_name: String) -> void:
 	active_flight_mode = mode_name.to_lower()
 	if flight_physics:
 		flight_physics.set_flight_profile(active_flight_mode)
 	_update_mode_buttons_ui(active_flight_mode)
-	var title = "सामान्य (Normal)"
-	if active_flight_mode == "cine":
-		title = "सिनेमाई (Cine Smooth)"
-	elif active_flight_mode == "sport":
-		title = "खेलकुद (Sport Agility)"
-	_show_banner("उडान मोड: %s" % title, 2.0)
+	_show_banner("FLIGHT TUNING: %s" % active_flight_mode.to_upper(), 2.0)
+
+func _on_btn_mode_cycle_pressed() -> void:
+	if flight_physics and flight_physics.flight_mode_manager:
+		var cur_m = flight_physics.flight_mode_manager.current_mode
+		var next_m = (int(cur_m) + 1) % 3
+		flight_physics.flight_mode_manager.set_mode(next_m as FlightModeManager.Mode)
+		var m_name = flight_physics.flight_mode_manager.get_mode_name()
+		if label_mode_badge:
+			label_mode_badge.text = "MODE: %s" % m_name
+		if btn_mode_cycle:
+			btn_mode_cycle.text = "MODE: %s" % m_name
+		_show_banner("FLIGHT MODE: %s" % m_name, 2.0)
 
 func _update_mode_buttons_ui(mode_name: String) -> void:
-	# Update button text/highlights
 	if btn_mode_cine:
-		btn_mode_cine.text = "★ Cine (सिनेमाई)" if mode_name == "cine" else "Cine (सिनेमाई)"
+		btn_mode_cine.text = "★ Cine" if mode_name == "cine" else "Cine"
 	if btn_mode_normal:
-		btn_mode_normal.text = "★ Normal (सामान्य)" if mode_name == "normal" else "Normal (सामान्य)"
+		btn_mode_normal.text = "★ Normal" if mode_name == "normal" else "Normal"
 	if btn_mode_sport:
-		btn_mode_sport.text = "★ Sport (खेलकुद)" if mode_name == "sport" else "Sport (खेलकुद)"
+		btn_mode_sport.text = "★ Sport" if mode_name == "sport" else "Sport"
 
 # -----------------------------------------------------------------------------
-# Primary Action Buttons (Take Off, Land, RTH, Failsafe)
+# Action Buttons & Gating
 # -----------------------------------------------------------------------------
 func _on_btn_takeoff_pressed() -> void:
 	if flight_physics:
@@ -252,7 +289,6 @@ func _on_btn_takeoff_pressed() -> void:
 			flight_physics.reset_to_pad()
 			_show_banner("DRONE RECOVERED TO LAUNCH PAD", 2.5)
 		else:
-			# If airborne, button functions as Land
 			flight_physics.land()
 	elif input_router:
 		input_router.takeoff_requested.emit()
@@ -261,18 +297,31 @@ func _on_btn_rth_pressed() -> void:
 	if flight_physics:
 		if flight_physics.current_state == FlightPhysics.DroneState.RTH:
 			flight_physics.cancel_rth()
-			_show_banner("RTH रद्द गरियो — नियन्त्रण फिर्ता (Manual Restored)", 2.5)
+			_show_banner("RTH CANCELLED — MANUAL RESTORED", 2.5)
 			if btn_rth:
 				btn_rth.text = "🏠 RTH"
 		else:
 			if flight_physics.trigger_rth():
-				_show_banner("स्वचालित घर फर्किने सुरु (RTH Active)", 3.0)
+				_show_banner("🏠 RTH ACTIVE — RETURNING TO PAD", 3.0)
 				if btn_rth:
-					btn_rth.text = "❌ RTH रोक्नुहोस्"
+					btn_rth.text = "❌ Cancel RTH"
 			else:
-				_show_banner("RTH उपलब्ध छैन: ड्रोन हावामा छैन", 2.5)
+				_show_banner("RTH NOT AVAILABLE ON GROUND", 2.0)
 	elif input_router:
 		input_router.rth_requested.emit()
+
+func _on_btn_brake_pressed() -> void:
+	if flight_physics and flight_physics.brake_controller:
+		var is_braking = not flight_physics.brake_controller.force_brake_active
+		flight_physics.brake_controller.set_force_brake(is_braking)
+		if is_braking:
+			_show_banner("🛑 BRAKE ACTIVE", 2.0)
+			if btn_brake:
+				btn_brake.text = "🛑 Braking..."
+		else:
+			_show_banner("BRAKE RELEASED", 1.5)
+			if btn_brake:
+				btn_brake.text = "🛑 Brake"
 
 func _on_btn_failsafe_pressed() -> void:
 	if flight_physics:
@@ -281,7 +330,6 @@ func _on_btn_failsafe_pressed() -> void:
 			FlightPhysics.DroneState.HOVER,
 			FlightPhysics.DroneState.TAKEOFF
 		]:
-			# Trigger Failsafe RTH or controlled emergency autoland
 			if flight_physics.altitude_agl > 2.0:
 				flight_physics.trigger_rth()
 				_show_banner("🛡️ FAILSAFE ACTIVATED — RETURNING HOME", 3.5)
@@ -300,39 +348,39 @@ func _on_btn_cam_toggle_pressed() -> void:
 func _on_camera_mode_changed(mode_name: String) -> void:
 	if btn_cam_toggle:
 		btn_cam_toggle.text = "📷 %s" % mode_name.substr(0, 3).to_upper()
-	_show_banner("क्यामेरा दृश्य: %s" % mode_name.to_upper(), 1.5)
+	_show_banner("CAMERA: %s" % mode_name.to_upper(), 1.5)
 
 func _on_btn_flip_pressed() -> void:
-	if not flight_physics:
+	var state = current_drone_state
+	var alt = current_altitude_agl
+	if flight_physics:
+		alt = flight_physics.altitude_agl
+		state = FlightPhysics.DroneState.keys()[flight_physics.current_state]
+
+	if state != "FLYING" and state != "HOVER":
+		_show_banner("⚠️ CANNOT FLIP ON GROUND — TAKE OFF FIRST", 2.0)
 		return
-	if flight_physics.current_state != FlightPhysics.DroneState.FLYING and flight_physics.current_state != FlightPhysics.DroneState.HOVER:
-		_show_banner("हवामा उड्दा मात्र फ्लिप गर्न सकिन्छ (Fly before flipping)", 2.0)
+	if alt < 3.0:
+		_show_banner("⚠️ TOO LOW FOR FLIP (Min 3.0m required)", 2.5)
 		return
 
-	# Choose flip based on last right stick movement or cycle
-	var stunt_type = "front_flip"
-	if right_joystick and right_joystick.stick_vector.length() > 0.35:
-		var sv = right_joystick.stick_vector
-		if absf(sv.y) >= absf(sv.x):
-			stunt_type = "front_flip" if sv.y > 0.0 else "back_flip"
-		else:
-			stunt_type = "barrel_roll_right" if sv.x > 0.0 else "barrel_roll_left"
-	else:
-		var stunts = ["front_flip", "barrel_roll_left", "back_flip", "barrel_roll_right"]
-		stunt_type = stunts[randi() % stunts.size()]
+	if flight_physics:
+		var flip_dir = Vector2(0.0, 1.0) # Default front flip
+		if right_joystick and right_joystick.stick_vector.length() > 0.35:
+			var sv = right_joystick.stick_vector
+			if absf(sv.y) >= absf(sv.x):
+				flip_dir = Vector2(0.0, 1.0) if sv.y > 0.0 else Vector2(0.0, -1.0)
+			else:
+				flip_dir = Vector2(1.0, 0.0) if sv.x > 0.0 else Vector2(-1.0, 0.0)
 
-	if flight_physics.stunt_engine:
-		flight_physics.stunt_engine.custom_stunts_enabled = true
-		var success = flight_physics.stunt_engine.execute_stunt(stunt_type, flight_physics)
-		flight_physics.stunt_engine.custom_stunts_enabled = false
-		if success:
-			_show_banner("🤸 %s EXECUTED!" % stunt_type.to_upper().replace("_", " "), 2.0)
+		var ok = flight_physics.perform_flip(flip_dir)
+		if ok:
+			_show_banner("🤸 360° FLIP EXECUTING", 2.0)
 		else:
-			var check = flight_physics.stunt_engine.can_perform_stunt(flight_physics)
-			_show_banner("⚠️ " + check.get("reason", "Cannot perform stunt"), 2.0)
+			_show_banner("⚠️ FLIP REFUSED (Safety Check)", 2.0)
 
 # -----------------------------------------------------------------------------
-# Settings Drawer & Audio Toggles
+# Settings Drawer
 # -----------------------------------------------------------------------------
 func _toggle_settings_modal() -> void:
 	if settings_modal:
@@ -346,19 +394,19 @@ func _on_btn_drone_sound_pressed() -> void:
 func _update_drone_sound_button_label() -> void:
 	if btn_drone_sound:
 		var muted = audio_director.is_drone_sound_muted if audio_director else false
-		btn_drone_sound.text = "🚁 ड्रोन साउन्ड: OFF" if muted else "🚁 ड्रोन साउन्ड: ON"
+		btn_drone_sound.text = "🚁 Drone Sound: OFF" if muted else "🚁 Drone Sound: ON"
 
 func _on_btn_engine_pressed() -> void:
 	if audio_director and audio_director.has_method("cycle_motor_sound_profile"):
 		var p_name = audio_director.cycle_motor_sound_profile()
 		_update_engine_button_label(p_name)
-		_show_banner("इन्जिन साउन्ड प्रोफाइल: %s" % p_name.to_upper(), 2.0)
+		_show_banner("ENGINE SOUND: %s" % p_name.to_upper(), 2.0)
 
 func _update_engine_button_label(p_name: String = "") -> void:
 	if btn_engine:
 		if p_name == "" and audio_director and "current_sound_profile" in audio_director:
 			p_name = AudioDirector.MotorSoundProfile.keys()[audio_director.current_sound_profile]
-		btn_engine.text = "⚙️ इन्जिन: %s" % (p_name.to_upper() if p_name != "" else "TURBO")
+		btn_engine.text = "⚙️ Engine: %s" % (p_name.to_upper() if p_name != "" else "TURBO")
 
 func _on_btn_sound_pressed() -> void:
 	if audio_director:
@@ -368,12 +416,12 @@ func _on_btn_sound_pressed() -> void:
 func _update_sound_button_label() -> void:
 	if btn_sound:
 		var muted = audio_director.is_audio_muted if audio_director else false
-		btn_sound.text = "🔇 मास्टर साउन्ड: MUTE" if muted else "🔊 मास्टर साउन्ड: ON"
+		btn_sound.text = "🔇 Master Audio: MUTE" if muted else "🔊 Master Audio: ON"
 
 func _on_btn_reset_pressed() -> void:
 	if flight_physics:
 		flight_physics.reset_to_pad()
-		_show_banner("प्याडमा रिसेट भयो (Reset to Launch Pad)", 2.5)
+		_show_banner("RESET TO LAUNCH PAD", 2.5)
 	if settings_modal:
 		settings_modal.visible = false
 
@@ -387,108 +435,194 @@ func _show_banner(msg: String, duration: float = 3.0) -> void:
 		banner_hide_timer = duration
 
 func _on_preflight_failed(reason: String) -> void:
-	_show_banner("उडान सुरु गर्न सकिएन: %s" % reason.to_upper(), 4.0)
+	_show_banner("PREFLIGHT FAILED: %s" % reason.to_upper(), 4.0)
 
 func _on_flight_boundary_reached(boundary_type: String) -> void:
 	if boundary_type == "MAX_ALTITUDE":
-		_show_banner("⚠️ अधिकतम उचाइ सीमा पुग्यो (६० मि.)", 2.5)
+		_show_banner("⚠️ MAX ALTITUDE CEILING REACHED (60m)", 2.5)
 	else:
-		_show_banner("⚠️ जियोफेन्स सीमा पुग्यो (Geofence Breach)", 2.5)
+		_show_banner("⚠️ GEOFENCE BOUNDARY REACHED", 2.5)
 
 func _on_rth_state_changed(is_active: bool, distance: float) -> void:
 	if btn_rth:
-		btn_rth.text = "❌ RTH रोक्नुहोस्" if is_active else "🏠 RTH"
+		btn_rth.text = "❌ Cancel RTH" if is_active else "🏠 RTH"
 	if is_active:
-		_show_banner("घर फर्किंदै छ — दुरी: %.1f मि." % distance, 3.5)
+		_show_banner("🏠 RTH ACTIVE — DISTANCE: %.1f m" % distance, 3.5)
 
 func _on_drone_crashed(impact: float) -> void:
-	_show_banner("क्र्यास भयो (प्रभाव %.1f m/s) — रिसेट थिच्नुहोस्" % impact, 5.0)
+	_show_banner("CRASHED (IMPACT %.1f m/s) — PRESS RECOVER" % impact, 5.0)
 
 func _on_drone_state_changed(state_name: String) -> void:
+	current_drone_state = state_name
+	if label_state_badge:
+		label_state_badge.text = "STATE: %s" % state_name.to_upper()
+
 	match state_name:
 		"PREFLIGHT_CHECK":
-			_show_banner("प्रि-फ्लाइट परीक्षण सफल (Ready)", 2.0)
+			_show_banner("PREFLIGHT CHECK PASSED", 2.0)
 		"MOTOR_STARTING":
-			_show_banner("मोटरहरू सुरु हुँदै...", 2.0)
+			_show_banner("MOTORS SPOOLING UP...", 2.0)
 		"TAKEOFF":
-			_show_banner("उडान सुरु (३ मिटर उचाइ लक्ष्य)...", 3.0)
+			_show_banner("TAKEOFF (TARGET 3.0m)...", 3.0)
 		"HOVER":
-			_show_banner("उचाइ स्थिर — जोइस्टिक सक्रिय", 2.5)
+			_show_banner("HOVER STABILIZED — JOYSTICKS ACTIVE", 2.5)
 		"LANDING":
-			_show_banner("स्वचालित अवतरण (Autoland Active)...", 3.0)
+			_show_banner("AUTOLAND ACTIVE...", 3.0)
 		"RTH":
-			_show_banner("स्वचालित घर फर्किने (RTH Active)...", 3.5)
+			_show_banner("🏠 RTH ACTIVE — RETURNING HOME", 3.5)
 		"DISARMED":
-			_show_banner("मोटरहरू बन्द — टेक-अफका लागि तयार", 2.5)
+			_show_banner("MOTORS STOPPED — READY FOR TAKEOFF", 2.5)
 
-	# Update Takeoff button text dynamically
+	# Update Takeoff button text & contextual flip gating
 	if btn_takeoff:
 		if state_name == "DISARMED":
 			btn_takeoff.text = "🛫 Take Off"
-			btn_takeoff.disabled = false
 		elif state_name == "CRASHED":
 			btn_takeoff.text = "🔄 Recover"
-			btn_takeoff.disabled = false
 		else:
 			btn_takeoff.text = "🛬 Land"
-			btn_takeoff.disabled = false
+
+	if btn_flip:
+		var can_flip = (state_name in ["FLYING", "HOVER"])
+		btn_flip.disabled = not can_flip
+		btn_flip.modulate = Color(1, 1, 1, 1.0) if can_flip else Color(1, 1, 1, 0.4)
 
 func _on_telemetry_updated(data: Dictionary) -> void:
+	current_altitude_agl = data.get("altitude_agl", current_altitude_agl)
+	current_drone_state = data.get("state", current_drone_state)
+
 	var prof = data.get("profile", "Normal")
 	_update_mode_buttons_ui(prof.to_lower())
 
-	# Battery
+	var is_imp = settings_service.is_imperial() if settings_service else false
+
+	# Mode & State Badges
+	var mode_name = data.get("flight_mode", "ANGLE")
+	if label_mode_badge:
+		label_mode_badge.text = "MODE: %s" % mode_name
+	if btn_mode_cycle:
+		btn_mode_cycle.text = "MODE: %s" % mode_name
+
+	var state_name = data.get("state", "DISARMED")
+	if label_state_badge:
+		label_state_badge.text = "STATE: %s" % state_name
+
+	# Procedural Vectors: Artificial Horizon & Heading Strip
+	var p_pitch = data.get("pitch", 0.0)
+	var p_roll = data.get("roll", 0.0)
+	var p_heading = data.get("heading", 0.0)
+
+	if artificial_horizon:
+		artificial_horizon.set_attitude(p_pitch, p_roll)
+	if heading_strip:
+		heading_strip.heading_deg = p_heading
+
+	# Home Arrow & Bearing
+	if home_arrow:
+		home_arrow.is_imperial = is_imp
+		var d_pos = data.get("drone_pos", Vector3.ZERO)
+		var h_pos = data.get("home_pos", Vector3.ZERO)
+		home_arrow.update_home_vector(d_pos, deg_to_rad(p_heading), h_pos)
+
+	# Battery & Time Remaining
+	var pct = data.get("battery_pct", 100.0)
+	var volts = data.get("battery_volts", 15.2)
+	var t_rem = data.get("battery_time_remaining", 900.0)
+	var rem_min = int(t_rem) / 60
+	var rem_sec = int(t_rem) % 60
+
 	if label_battery:
-		var pct = data.get("battery_pct", 100.0)
-		var volts = data.get("battery_volts", 15.2)
-		label_battery.text = "🔋 %d%% (%.1fV)" % [int(pct), volts]
-		if pct < 20.0:
+		label_battery.text = "🔋 %d%% (%.1fV) [%02d:%02d]" % [int(pct), volts, rem_min, rem_sec]
+		if pct < 15.0:
 			label_battery.add_theme_color_override("font_color", Color.RED)
-		elif pct < 40.0:
+		elif pct < 25.0:
 			label_battery.add_theme_color_override("font_color", Color.YELLOW)
 		else:
 			label_battery.add_theme_color_override("font_color", Color(0.2, 0.95, 0.45))
 
-	# RC Signal
+	if battery_progress_bar:
+		battery_progress_bar.value = pct
+
+	# Warning Banner for Low Battery
+	if pct <= 25.0 and _last_low_battery_alert > 25.0:
+		_show_banner("⚠️ LOW BATTERY WARNING (%d%%) — AUTO-RTH AT 15%%" % int(pct), 3.5)
+	elif pct <= 15.0 and _last_low_battery_alert > 15.0:
+		_show_banner("🚨 CRITICAL BATTERY (%d%%) — AUTO-RTH ACTIVATED" % int(pct), 4.0)
+	_last_low_battery_alert = pct
+
+	# RC Signal & GPS
 	if label_signal:
 		var rc = data.get("rc_signal", 100.0)
-		label_signal.text = "((o)) RC सिग्नल बल (%d%%)" % int(rc)
-
-	# Satellites & GPS
+		label_signal.text = "((o)) RC %d%%" % int(rc)
 	if label_gps:
 		var gps_stat = data.get("gps_status", "STANDBY")
-		label_gps.text = "📶 GPS सिग्नल (%s)" % ("बलियो" if gps_stat == "3D RTK LOCK" else "मध्यम")
+		label_gps.text = "📶 GPS (%s)" % ("3D LOCK" if gps_stat == "3D RTK LOCK" else "STANDBY")
 
-	# Telemetry Box (Right side)
-	var alt = data.get("altitude_agl", 0.0)
-	var spd = data.get("speed", 0.0)
+	# Speeds (m/s & km/h or ft/s & mph)
+	var spd_ms = data.get("speed", 0.0)
+	var climb = data.get("climb_rate", 0.0)
+	var alt_agl = data.get("altitude_agl", 0.0)
+	var alt_msl = data.get("altitude_msl", 0.0)
 	var dist = data.get("home_distance", 0.0)
 
-	if label_h:
-		label_h.text = "H:  %.1f मि. (हवाई उचाइ)" % alt
 	if label_hs:
-		label_hs.text = "HS: %.1f मि./से (स्पीड)" % spd
-	if label_d:
-		label_d.text = "D:  %.1f मि. (दुरी)" % dist
+		if is_imp:
+			var spd_mph = spd_ms * 2.23694
+			var spd_fts = spd_ms * 3.28084
+			label_hs.text = "SPD: %.1f ft/s (%.1f mph)" % [spd_fts, spd_mph]
+		else:
+			var spd_kmh = spd_ms * 3.6
+			label_hs.text = "SPD: %.1f m/s (%.1f km/h)" % [spd_ms, spd_kmh]
 
-	# Obstacle Avoidance Sensor & Proximity
+	# Altitudes AGL + MSL
+	if label_h:
+		if is_imp:
+			label_h.text = "ALT: AGL %.1fft | MSL %.1fft" % [alt_agl * 3.28084, alt_msl * 3.28084]
+		else:
+			label_h.text = "ALT: AGL %.1fm | MSL %.1fm" % [alt_agl, alt_msl]
+
+	# Vertical Speed
+	if label_vs:
+		if is_imp:
+			label_vs.text = "V/S: %+.1f ft/s" % (climb * 3.28084)
+		else:
+			label_vs.text = "V/S: %+.1f m/s" % climb
+		if climb < -2.5:
+			label_vs.add_theme_color_override("font_color", Color.RED)
+		elif climb > 0.5:
+			label_vs.add_theme_color_override("font_color", Color(0.2, 0.95, 0.5))
+		else:
+			label_vs.add_theme_color_override("font_color", Color(0.8, 0.9, 1))
+
+	if label_d:
+		if is_imp:
+			label_d.text = "DIST: %.1f ft" % (dist * 3.28084)
+		else:
+			label_d.text = "DIST: %.1f m" % dist
+
+	# Flip Button Dynamic Visual Gating
+	if btn_flip:
+		var can_flip = (alt_agl >= 3.0 and state_name in ["FLYING", "HOVER"])
+		btn_flip.modulate = Color(1, 1, 1, 1.0) if can_flip else Color(1, 1, 1, 0.4)
+
+	# Terrain / Obstacle proximity
 	if sensor_icon and sensor_label:
-		if alt < 1.0 and spd > 1.5:
+		if alt_agl < 1.0 and spd_ms > 1.5:
 			sensor_icon.text = "((🚨))"
 			sensor_icon.add_theme_color_override("font_color", Color.RED)
-			sensor_label.text = "चेतावनी: नजिक अवरोध!\nTerrain Critical Warning"
+			sensor_label.text = "TERRAIN CRITICAL"
 			if proximity_warning:
 				proximity_warning.visible = true
 				proximity_warning.text = "⚠️ TERRAIN PROXIMITY ALERT"
-		elif alt < 2.5:
+		elif alt_agl < 2.5:
 			sensor_icon.text = "((⚠️))"
 			sensor_icon.add_theme_color_override("font_color", Color.YELLOW)
-			sensor_label.text = "चेतावनी: जमिन नजिक\nAltitude Low Caution"
+			sensor_label.text = "ALTITUDE LOW"
 			if proximity_warning:
 				proximity_warning.visible = false
 		else:
 			sensor_icon.text = "((🔔))"
 			sensor_icon.add_theme_color_override("font_color", Color(0.2, 0.95, 0.5))
-			sensor_label.text = "चेतावनी र सेन्सर:\nObstacle Sensor Active"
+			sensor_label.text = "SENSORS NORMAL"
 			if proximity_warning:
 				proximity_warning.visible = false
