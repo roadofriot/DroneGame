@@ -1,0 +1,78 @@
+{
+  "schema_version": 1,
+  "missions": [
+    {
+      "id": "training_gate_run",
+      "title": "Flight Gate Trial",
+      "description": "Fly through all 4 test course gates in sequential order before time expires.",
+      "type": "ring_race",
+      "world": "training_valley",
+      "time_limit_sec": 60.0,
+      "medals": {
+        "gold_time_sec": 22.0,
+        "silver_time_sec": 35.0,
+        "bronze_time_sec": 50.0
+      },
+      "first_clear_rewards": {
+        "coins": 250,
+        "xp": 500
+      },
+      "replay_rewards": {
+        "coins": 25,
+        "xp": 50
+      },
+      "objectives": [
+        { "type": "pass_gates", "target_count": 4 }
+      ]
+    },
+    {
+      "id": "training_coin_hunt",
+      "title": "Launch Pad Coin Hunt",
+      "description": "Collect all 6 floating coins scattered along the flight perimeter.",
+      "type": "coin_hunt",
+      "world": "training_valley",
+      "time_limit_sec": 75.0,
+      "medals": {
+        "gold_time_sec": 28.0,
+        "silver_time_sec": 45.0,
+        "bronze_time_sec": 65.0
+      },
+      "first_clear_rewards": {
+        "coins": 300,
+        "xp": 600
+      },
+      "replay_rewards": {
+        "coins": 30,
+        "xp": 60
+      },
+      "objectives": [
+        { "type": "collect_coins", "target_count": 6 }
+      ]
+    },
+    {
+      "id": "training_precision_landing",
+      "title": "Precision Touchdown",
+      "description": "Take off, fly around the perimeter pylon, and land smoothly inside the helipad target.",
+      "type": "precision_landing",
+      "world": "training_valley",
+      "time_limit_sec": 45.0,
+      "medals": {
+        "gold_time_sec": 18.0,
+        "silver_time_sec": 28.0,
+        "bronze_time_sec": 40.0
+      },
+      "first_clear_rewards": {
+        "coins": 200,
+        "xp": 450
+      },
+      "replay_rewards": {
+        "coins": 20,
+        "xp": 40
+      },
+      "objectives": [
+        { "type": "reach_altitude", "min_altitude_m": 4.0 },
+        { "type": "precision_land", "max_touchdown_speed": 1.2, "max_pad_offset_m": 1.8 }
+      ]
+    }
+  ]
+}

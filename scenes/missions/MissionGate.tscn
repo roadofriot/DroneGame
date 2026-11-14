@@ -1,0 +1,31 @@
+[gd_scene load_steps=5 format=3 uid="uid://b2gate8s1p01"]
+
+[ext_resource type="Script" path="res://scripts/missions/MissionGate.gd" id="1_gate"]
+
+[sub_resource type="CylinderShape3D" id="CylinderShape3D_trigger"]
+height = 0.5
+radius = 2.1
+
+[sub_resource type="StandardMaterial3D" id="Mat_DefaultGate"]
+albedo_color = Color(0.1, 0.8, 1, 1)
+emission_enabled = true
+emission = Color(0.1, 0.8, 1, 1)
+emission_energy_multiplier = 2.0
+
+[sub_resource type="TorusMesh" id="TorusMesh_GateMesh"]
+material = SubResource("Mat_DefaultGate")
+inner_radius = 1.85
+outer_radius = 2.15
+
+[node name="MissionGate" type="Area3D"]
+collision_layer = 4
+collision_mask = 1
+script = ExtResource("1_gate")
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, -4.37114e-08, -1, 0, 1, -4.37114e-08, 0, 0, 0)
+shape = SubResource("CylinderShape3D_trigger")
+
+[node name="RingMesh" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, -4.37114e-08, -1, 0, 1, -4.37114e-08, 0, 0, 0)
+mesh = SubResource("TorusMesh_GateMesh")

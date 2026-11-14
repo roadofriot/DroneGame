@@ -1,0 +1,161 @@
+[gd_scene load_steps=5 format=3 uid="uid://d3mresult01"]
+
+[ext_resource type="Script" path="res://scripts/ui/MissionResults.gd" id="1_results"]
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_Backdrop"]
+bg_color = Color(0, 0, 0, 0.72)
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_Card"]
+bg_color = Color(0.08, 0.12, 0.16, 0.95)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(0.2, 0.8, 1, 0.85)
+corner_radius_top_left = 12
+corner_radius_top_right = 12
+corner_radius_bottom_right = 12
+corner_radius_bottom_left = 12
+content_margin_left = 28.0
+content_margin_top = 24.0
+content_margin_right = 28.0
+content_margin_bottom = 24.0
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_Btn"]
+bg_color = Color(0.12, 0.42, 0.65, 0.9)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.3, 0.85, 1, 0.9)
+corner_radius_top_left = 6
+corner_radius_top_right = 6
+corner_radius_bottom_right = 6
+corner_radius_bottom_left = 6
+content_margin_left = 16.0
+content_margin_top = 10.0
+content_margin_right = 16.0
+content_margin_bottom = 10.0
+
+[node name="MissionResults" type="Control"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("1_results")
+
+[node name="Backdrop" type="Panel" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_styles/panel = SubResource("StyleBoxFlat_Backdrop")
+
+[node name="Card" type="PanelContainer" parent="."]
+layout_mode = 1
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -220.0
+offset_top = -180.0
+offset_right = 220.0
+offset_bottom = 180.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_styles/panel = SubResource("StyleBoxFlat_Card")
+
+[node name="VBox" type="VBoxContainer" parent="Card"]
+layout_mode = 2
+theme_override_constants/separation = 16
+
+[node name="LabelTitle" type="Label" parent="Card/VBox"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.2, 0.85, 1, 1)
+theme_override_font_sizes/font_size = 20
+text = "MISSION COMPLETE"
+horizontal_alignment = 1
+
+[node name="MedalPill" type="CenterContainer" parent="Card/VBox"]
+layout_mode = 2
+
+[node name="LabelMedal" type="Label" parent="Card/VBox/MedalPill"]
+layout_mode = 2
+theme_override_colors/font_color = Color(1, 0.85, 0.1, 1)
+theme_override_font_sizes/font_size = 22
+text = "MEDAL: GOLD"
+
+[node name="HBoxStats" type="HBoxContainer" parent="Card/VBox"]
+layout_mode = 2
+theme_override_constants/separation = 24
+alignment = 1
+
+[node name="TimeVBox" type="VBoxContainer" parent="Card/VBox/HBoxStats"]
+layout_mode = 2
+
+[node name="Header" type="Label" parent="Card/VBox/HBoxStats/TimeVBox"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 12
+text = "TIME"
+horizontal_alignment = 1
+
+[node name="LabelTime" type="Label" parent="Card/VBox/HBoxStats/TimeVBox"]
+layout_mode = 2
+theme_override_colors/font_color = Color(1, 0.9, 0.2, 1)
+theme_override_font_sizes/font_size = 16
+text = "00:18.4"
+horizontal_alignment = 1
+
+[node name="CoinsVBox" type="VBoxContainer" parent="Card/VBox/HBoxStats"]
+layout_mode = 2
+
+[node name="Header" type="Label" parent="Card/VBox/HBoxStats/CoinsVBox"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 12
+text = "COINS"
+horizontal_alignment = 1
+
+[node name="LabelCoins" type="Label" parent="Card/VBox/HBoxStats/CoinsVBox"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.2, 0.95, 0.4, 1)
+theme_override_font_sizes/font_size = 16
+text = "+250"
+horizontal_alignment = 1
+
+[node name="XpVBox" type="VBoxContainer" parent="Card/VBox/HBoxStats"]
+layout_mode = 2
+
+[node name="Header" type="Label" parent="Card/VBox/HBoxStats/XpVBox"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 12
+text = "XP"
+horizontal_alignment = 1
+
+[node name="LabelXp" type="Label" parent="Card/VBox/HBoxStats/XpVBox"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.3, 0.85, 1, 1)
+theme_override_font_sizes/font_size = 16
+text = "+500"
+horizontal_alignment = 1
+
+[node name="HBoxButtons" type="HBoxContainer" parent="Card/VBox"]
+layout_mode = 2
+theme_override_constants/separation = 20
+alignment = 1
+
+[node name="BtnRetry" type="Button" parent="Card/VBox/HBoxButtons"]
+custom_minimum_size = Vector2(110, 42)
+layout_mode = 2
+theme_override_styles/normal = SubResource("StyleBoxFlat_Btn")
+text = "RETRY"
+
+[node name="BtnContinue" type="Button" parent="Card/VBox/HBoxButtons"]
+custom_minimum_size = Vector2(120, 42)
+layout_mode = 2
+theme_override_styles/normal = SubResource("StyleBoxFlat_Btn")
+text = "CONTINUE"

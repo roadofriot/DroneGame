@@ -1,0 +1,32 @@
+[gd_scene load_steps=5 format=3 uid="uid://d1k3m4coin01"]
+
+[ext_resource type="Script" path="res://scripts/economy/CollectibleCoin.gd" id="1_coin"]
+
+[sub_resource type="SphereShape3D" id="SphereShape3D_pickup"]
+radius = 0.75
+
+[sub_resource type="StandardMaterial3D" id="Mat_GoldCoin"]
+albedo_color = Color(1, 0.8, 0.1, 1)
+metallic = 0.95
+roughness = 0.2
+emission_enabled = true
+emission = Color(1, 0.75, 0.05, 1)
+emission_energy_multiplier = 0.75
+
+[sub_resource type="CylinderMesh" id="CylinderMesh_Coin"]
+material = SubResource("Mat_GoldCoin")
+top_radius = 0.38
+bottom_radius = 0.38
+height = 0.08
+
+[node name="CollectibleCoin" type="Area3D"]
+collision_layer = 2
+collision_mask = 1
+script = ExtResource("1_coin")
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="."]
+shape = SubResource("SphereShape3D_pickup")
+
+[node name="CoinMesh" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, -4.37114e-08, -1, 0, 1, -4.37114e-08, 0, 0, 0)
+mesh = SubResource("CylinderMesh_Coin")
