@@ -35,9 +35,9 @@ enum DroneState {
 @export var drone_mass: float = 1.25
 @export var arm_length: float = 0.22 # Motor arm moment length in meters
 @export var max_thrust_per_motor: float = 7.0 # 4 * 7 = 28 N (TWR ~ 2.28)
-@export var motor_spool_speed: float = 14.0 # Spool response factor
+@export var motor_spool_speed: float = 20.0 # Spool response factor
 @export var linear_drag: float = 0.55
-@export var angular_drag: float = 5.0
+@export var angular_drag: float = 4.0
 @export var ground_effect_dist: float = 1.5
 @export var ground_effect_mult: float = 0.25
 
@@ -394,6 +394,10 @@ func _process_flying(delta: float) -> void:
 
 	var hover_thrust = (drone_mass * 9.8) / (4.0 * max_thrust_per_motor)
 	var base_thrust = hover_thrust + (in_throttle * 0.45)
+	# Tilt compensation: when tilted, increase thrust to maintain altitude
+	var cur_basis_tilt = global_transform.basis.orthonormalized() if (is_inside_tree() and is_node_ready()) else transform.basis.orthonormalized()
+	var tilt_comp = 1.0 / maxf(cur_basis_tilt.y.dot(Vector3.UP), 0.25)
+	base_thrust = clampf(base_thrust * tilt_comp, 0.0, 1.0)
 
 	# In Acro mode, direct rate control without auto-level
 	if active_profile_name == "acro":
@@ -428,13 +432,13 @@ func _process_flying(delta: float) -> void:
 	if abs(in_pitch) > 0.03 or abs(in_roll) > 0.03:
 		# Pilot commanding horizontal translation
 		var target_h_vel = (forward_flat * in_pitch + right_flat * in_roll) * max_h_speed
-		var h_force = (target_h_vel - cur_h_vel) * 3.8 * drone_mass
+		var h_force = (target_h_vel - cur_h_vel) * 5.5 * drone_mass
 		if h_force.is_finite():
 			apply_central_force(h_force)
 	else:
 		# Active horizontal braking to maintain rock-solid hover
 		if cur_h_vel.length() > 0.02:
-			var brake_force = -cur_h_vel * 3.2 * drone_mass
+			var brake_force = -cur_h_vel * 1.8 * drone_mass
 			if brake_force.is_finite():
 				apply_central_force(brake_force)
 
@@ -693,6 +697,11 @@ func _apply_motor_forces(delta: float) -> void:
 	var motor_torque_world = cur_basis * motor_torque_local
 	if motor_torque_world.is_finite():
 		apply_torque(motor_torque_world)
+
+	# Cap angular velocity to prevent oscillation
+	var ang_vel = angular_velocity
+	if ang_vel.length() > 8.0:
+		angular_velocity = ang_vel.normalized() * 8.0
 
 	var lin_speed = linear_velocity.length()
 	if lin_speed > 0.001 and linear_velocity.is_finite():

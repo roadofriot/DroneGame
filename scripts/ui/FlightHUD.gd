@@ -233,7 +233,6 @@ func _set_flight_mode_profile(mode_name: String) -> void:
 	_show_banner("उडान मोड: %s" % title, 2.0)
 
 func _update_mode_buttons_ui(mode_name: String) -> void:
-	var active_style = preload("res://scenes/ui/FlightHUD.tscn").instantiate().get_node("CenterControls/ModeContainer/ModeHBox/BtnModeNormal").get_theme_stylebox("normal")
 	# Update button text/highlights
 	if btn_mode_cine:
 		btn_mode_cine.text = "★ Cine (सिनेमाई)" if mode_name == "cine" else "Cine (सिनेमाई)"

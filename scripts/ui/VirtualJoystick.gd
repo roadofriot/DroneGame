@@ -8,7 +8,7 @@ extends Control
 signal stick_moved(value: Vector2)
 signal stick_released
 
-@export var max_radius: float = 105.0
+@export var max_radius: float = 130.0
 @export var deadzone: float = 0.06
 @export var stick_name: String = "" # e.g. "THROTTLE / YAW" or "PITCH / ROLL"
 @export var stick_type: String = "LEFT" # "LEFT" or "RIGHT"
@@ -21,7 +21,7 @@ var base_center: Vector2 = Vector2.ZERO
 var knob_pos: Vector2 = Vector2.ZERO
 
 func _ready() -> void:
-	custom_minimum_size = Vector2(260.0, 260.0)
+	custom_minimum_size = Vector2(310.0, 310.0)
 	base_center = size / 2.0
 	knob_pos = base_center
 	if not resized.is_connected(_on_resized):
@@ -44,6 +44,7 @@ func _gui_input(event: InputEvent) -> void:
 		if event.pressed and not is_dragging:
 			# Claim exclusive ownership of this touch pointer ID
 			is_dragging = true
+			Input.vibrate_handheld(25)  # Short haptic tap on touch start
 			touch_pointer_id = event.index
 			_update_stick(event.position)
 			accept_event()
