@@ -7,6 +7,7 @@ extends RigidBody3D
 
 const ControlFrame = preload("res://scripts/input/ControlFrame.gd")
 const FlightController = preload("res://scripts/flight/FlightController.gd")
+const FlightStateMachine = preload("res://scripts/flight/FlightStateMachine.gd")
 
 signal telemetry_updated(data: Dictionary)
 signal flight_mode_changed(mode_name: String)
@@ -44,8 +45,25 @@ enum DroneState {
 @export var ground_effect_dist: float = 1.5
 @export var ground_effect_mult: float = 0.25
 
-# Flight State
-var current_state: DroneState = DroneState.DISARMED
+# Flight State & State Machine
+var state_machine: FlightStateMachine = null
+var current_state: DroneState = DroneState.DISARMED:
+	set(val):
+		current_state = val
+		if state_machine:
+			match val:
+				DroneState.DISARMED:
+					state_machine.state = FlightStateMachine.State.DISARMED
+				DroneState.MOTOR_STARTING, DroneState.TAKEOFF:
+					state_machine.state = FlightStateMachine.State.TAKEOFF
+				DroneState.HOVER, DroneState.FLYING, DroneState.RTH:
+					state_machine.state = FlightStateMachine.State.FLYING
+				DroneState.LANDING:
+					state_machine.state = FlightStateMachine.State.LANDING
+				DroneState.CRASHED:
+					state_machine.state = FlightStateMachine.State.CRASHED
+			state_machine.is_armed = (val != DroneState.DISARMED and val != DroneState.CRASHED)
+
 var active_profile_name: String = "normal"
 var active_profile: Dictionary = {}
 var all_profiles: Dictionary = {}
@@ -95,6 +113,7 @@ var yaw_rate_p: float = 4.2
 
 func _init() -> void:
 	flight_controller = FlightController.new()
+	state_machine = FlightStateMachine.new()
 	_load_profiles()
 
 func _ready() -> void:
@@ -110,10 +129,22 @@ func _ready() -> void:
 	set_flight_profile("normal")
 
 	if input_router:
+		input_router.takeoff_land_pressed.connect(_on_takeoff_land_requested)
 		input_router.takeoff_land_requested.connect(_on_takeoff_land_requested)
+		input_router.reset_pressed.connect(_on_reset_requested)
 		input_router.reset_requested.connect(_on_reset_requested)
 		input_router.flight_mode_cycle_requested.connect(_on_flight_mode_cycle_requested)
 		input_router.stunt_requested.connect(_on_stunt_requested)
+		if input_router.has_signal("emergency_stop_pressed"):
+			input_router.emergency_stop_pressed.connect(_on_emergency_stop_pressed)
+		if input_router.has_signal("emergency_cut_requested"):
+			input_router.emergency_cut_requested.connect(_on_emergency_stop_pressed)
+
+	if state_machine:
+		state_machine.state_name_changed.connect(func(n): drone_state_changed.emit(n))
+		state_machine.takeoff_completed.connect(func(): takeoff_completed.emit())
+		state_machine.landing_completed.connect(func(): landing_completed.emit())
+		state_machine.crash_detected.connect(func(r): drone_crashed.emit(15.0))
 
 	if not stunt_engine:
 		stunt_engine = get_node_or_null("StuntEngine")
@@ -231,6 +262,13 @@ func _physics_process(delta: float) -> void:
 	_update_telemetry()
 	_update_battery(safe_delta)
 
+	if state_machine:
+		state_machine.update(safe_delta, altitude_agl, ground_speed, linear_velocity.y, pitch_deg)
+		if state_machine.is_crashed():
+			for i in range(4):
+				target_motor_rpms[i] = 0.0
+				motor_rpms[i] = 0.0
+
 	if current_state != DroneState.DISARMED and current_state != DroneState.CRASHED:
 		total_flight_time += safe_delta
 
@@ -265,11 +303,24 @@ func _update_telemetry() -> void:
 		cur_y = position.y
 	altitude_msl = cur_y
 
-	if raycast_ground and raycast_ground.is_inside_tree() and raycast_ground.is_colliding():
+	# Downward raycast via PhysicsDirectSpaceState3D every physics tick
+	var ray_agl: float = -1.0
+	if is_inside_tree() and get_world_3d():
+		var space_state = get_world_3d().direct_space_state
+		var origin_pt = global_position if use_global else position
+		var target_pt = origin_pt + Vector3(0.0, -100.0, 0.0)
+		var query = PhysicsRayQueryParameters3D.create(origin_pt, target_pt)
+		query.exclude = [get_rid()]
+		var result = space_state.intersect_ray(query)
+		if not result.is_empty() and result.has("position"):
+			ray_agl = maxf(0.0, origin_pt.y - result["position"].y)
+
+	if ray_agl >= 0.0:
+		altitude_agl = ray_agl
+	elif raycast_ground and raycast_ground.is_inside_tree() and raycast_ground.is_colliding():
 		var col_pt = raycast_ground.get_collision_point()
 		if col_pt.is_finite():
 			altitude_agl = maxf(0.0, altitude_msl - col_pt.y)
-			# print("DBG: col_pt=", col_pt, " msl=", altitude_msl, " agl=", altitude_agl)
 		else:
 			altitude_agl = maxf(0.0, altitude_msl)
 	else:
@@ -570,13 +621,19 @@ func cancel_rth() -> void:
 		rth_state_changed.emit(false, get_home_distance())
 		print("[FLIGHT] RTH_CANCELLED — Manual Control Restored")
 
-func emergency_motor_cut() -> void:
-	print("[COMMAND] EMERGENCY_MOTOR_CUT")
+func _on_emergency_stop_pressed() -> void:
+	print("[SAFETY] EMERGENCY_STOP_TRIGGERED — Zeroing motors immediately")
 	for i in range(4):
 		target_motor_rpms[i] = 0.0
 		motor_rpms[i] = 0.0
-	current_state = DroneState.DISARMED
-	drone_state_changed.emit("DISARMED")
+	if state_machine:
+		state_machine.handle_emergency_stop()
+	else:
+		current_state = DroneState.CRASHED
+	drone_crashed.emit(25.0)
+
+func emergency_motor_cut() -> void:
+	_on_emergency_stop_pressed()
 
 func reset_to_pad() -> void:
 	print("[COMMAND] RESET_REQUESTED")

@@ -8,10 +8,11 @@ const ControlFrame = preload("res://scripts/input/ControlFrame.gd")
 ## Implements radial deadzone (Input.get_vector), cubic expo curves, conditional keyboard ramping,
 ## and directional flip vector snapping.
 
-# Phase 2 Core Action Signals
+# Phase 2 & 4 Core Action Signals
 signal takeoff_land_pressed
 signal reset_pressed
 signal flip_pressed(dir: Vector2)
+signal emergency_stop_pressed
 
 # Backward Compatibility Signals
 signal takeoff_requested
@@ -72,6 +73,8 @@ var _k_roll: float = 0.0
 
 # Key Debounce State for Actions
 var _key_states: Dictionary = {}
+var _emergency_hold_time: float = 0.0
+const EMERGENCY_HOLD_DURATION: float = 0.7
 
 func _init() -> void:
 	current_frame = ControlFrame.new()
@@ -110,7 +113,7 @@ func _unhandled_input(event: InputEvent) -> void:
 
 func _physics_process(delta: float) -> void:
 	_poll_flight_inputs(delta)
-	_poll_action_triggers()
+	_poll_action_triggers(delta)
 
 func _poll_flight_inputs(delta: float) -> void:
 	# 1. Desktop Keyboard Inputs (InputMap actions if pressed, fallback to physical keys)
@@ -212,7 +215,7 @@ func _ramp_axis(current_val: float, target_val: float, delta: float) -> float:
 	else:
 		return move_toward(current_val, 0.0, KEY_RELEASE_RATE * delta)
 
-func _poll_action_triggers() -> void:
+func _poll_action_triggers(delta: float) -> void:
 	# Takeoff / Land Toggle
 	if Input.is_action_just_pressed("flight_takeoff_land") or Input.is_action_just_pressed("ui_accept") or _is_key_just_pressed(KEY_SPACE) or _is_key_just_pressed(KEY_T):
 		takeoff_land_pressed.emit()
@@ -246,9 +249,17 @@ func _poll_action_triggers() -> void:
 	if _is_key_just_pressed(KEY_P) or _is_key_just_pressed(KEY_ESCAPE):
 		pause_requested.emit()
 
-	# Emergency Cut
-	if _is_key_just_pressed(KEY_X):
-		emergency_cut_requested.emit()
+	# Emergency Stop (Hold 0.7s on Backspace or Gamepad Back/Select)
+	var e_stop_held = Input.is_action_pressed("emergency_stop") or Input.is_key_pressed(KEY_BACKSPACE) or Input.is_key_pressed(KEY_X)
+	if e_stop_held:
+		if _emergency_hold_time >= 0.0:
+			_emergency_hold_time += delta
+			if _emergency_hold_time >= EMERGENCY_HOLD_DURATION:
+				emergency_stop_pressed.emit()
+				emergency_cut_requested.emit()
+				_emergency_hold_time = -100.0 # Guard until key is released
+	else:
+		_emergency_hold_time = 0.0
 
 	# Flip / Stunt Action (Snaps to 4 Cardinal Directions based on Stick at Press Time)
 	if Input.is_action_just_pressed("stunt_flip") or _is_key_just_pressed(KEY_F):
