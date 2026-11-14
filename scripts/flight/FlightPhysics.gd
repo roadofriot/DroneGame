@@ -171,29 +171,46 @@ func set_flight_profile(profile_name: String) -> void:
 		flight_mode_changed.emit(active_profile.get("name", profile_name.capitalize()))
 
 func _physics_process(delta: float) -> void:
+	# Clamp delta to prevent integration explosion on hitch / startup
+	var safe_delta = clampf(delta, 0.001, 0.033)
+
+	# Guard against runaway physics or NaN
+	if not linear_velocity.is_finite() or linear_velocity.length_squared() > 40000.0:
+		linear_velocity = Vector3.ZERO
+	if not angular_velocity.is_finite() or angular_velocity.length_squared() > 10000.0:
+		angular_velocity = Vector3.ZERO
+	if not global_position.is_finite():
+		global_position = Vector3(0.0, 0.2, 0.0)
+
 	_update_telemetry()
-	_update_battery(delta)
+	_update_battery(safe_delta)
 
 	match current_state:
 		DroneState.DISARMED:
-			_process_disarmed(delta)
+			_process_disarmed(safe_delta)
 		DroneState.TAKING_OFF:
-			_process_taking_off(delta)
+			_process_taking_off(safe_delta)
 		DroneState.FLYING:
-			_process_flying(delta)
+			_process_flying(safe_delta)
 		DroneState.LANDING:
-			_process_landing(delta)
+			_process_landing(safe_delta)
 		DroneState.CRASHED:
-			_process_crashed(delta)
+			_process_crashed(safe_delta)
 
-	_apply_motor_forces(delta)
+	_apply_motor_forces(safe_delta)
 	_emit_telemetry()
 
 func _update_telemetry() -> void:
 	var cur_trans = global_transform if is_inside_tree() else transform
+	if not cur_trans.is_finite():
+		return
 	altitude_msl = global_position.y if is_inside_tree() else position.y
 	if raycast_ground and raycast_ground.is_inside_tree() and raycast_ground.is_colliding():
-		altitude_agl = maxf(0.0, altitude_msl - raycast_ground.get_collision_point().y)
+		var col_pt = raycast_ground.get_collision_point()
+		if col_pt.is_finite():
+			altitude_agl = maxf(0.0, altitude_msl - col_pt.y)
+		else:
+			altitude_agl = maxf(0.0, altitude_msl)
 	else:
 		altitude_agl = maxf(0.0, altitude_msl)
 
@@ -204,14 +221,15 @@ func _update_telemetry() -> void:
 	# Calculate pitch and roll angles in degrees
 	var forward = -cur_trans.basis.z
 	var right = cur_trans.basis.x
-	var up = cur_trans.basis.y
 
 	pitch_deg = rad_to_deg(asin(clampf(forward.y, -1.0, 1.0)))
 	roll_deg = rad_to_deg(asin(clampf(right.y, -1.0, 1.0)))
 
 	# Compass heading (0..360 where 0 = North / -Z axis)
-	var forward_flat = Vector2(-forward.x, -forward.z).normalized()
-	heading_deg = fposmod(rad_to_deg(atan2(forward_flat.x, forward_flat.y)), 360.0)
+	var forward_flat = Vector2(-forward.x, -forward.z)
+	if forward_flat.length_squared() > 0.0001:
+		forward_flat = forward_flat.normalized()
+		heading_deg = fposmod(rad_to_deg(atan2(forward_flat.x, forward_flat.y)), 360.0)
 
 func _update_battery(delta: float) -> void:
 	if battery_remaining_mah <= 0.0:
@@ -297,14 +315,14 @@ func _process_crashed(delta: float) -> void:
 	for i in range(4):
 		target_motor_rpms[i] = 0.0
 
-func _calculate_auto_level_rpms(base_thrust: float, target_pitch_deg: float, target_roll_deg: float, target_yaw_rate: float, delta: float) -> void:
+func _calculate_auto_level_rpms(base_thrust: float, target_pitch_deg: float, target_roll_deg: float, target_yaw_rate: float, _delta: float) -> void:
 	# Error in pitch & roll
 	var pitch_err = deg_to_rad(target_pitch_deg - pitch_deg)
 	var roll_err = deg_to_rad(target_roll_deg - roll_deg)
 
-	# Angular velocities
-	var cur_basis = global_transform.basis if is_inside_tree() else transform.basis
-	var local_ang_vel = cur_basis.inverse() * angular_velocity
+	# Angular velocities relative to drone frame using transpose (stable inverse for orthogonal rotation)
+	var cur_basis = global_transform.basis.orthonormalized() if is_inside_tree() else transform.basis.orthonormalized()
+	var local_ang_vel = cur_basis.transposed() * angular_velocity
 
 	# Torques
 	var pitch_torque = (pitch_err * pitch_pid_p) - (local_ang_vel.x * pitch_pid_d)
@@ -322,8 +340,8 @@ func _calculate_auto_level_rpms(base_thrust: float, target_pitch_deg: float, tar
 	target_motor_rpms[3] = clampf(base_thrust + pitch_torque - roll_torque + (yaw_torque * 0.2), 0.0, 1.0)
 
 func _calculate_acro_rpms(base_thrust: float, in_pitch: float, in_roll: float, in_yaw: float, _delta: float) -> void:
-	var cur_basis = global_transform.basis if is_inside_tree() else transform.basis
-	var local_ang_vel = cur_basis.inverse() * angular_velocity
+	var cur_basis = global_transform.basis.orthonormalized() if is_inside_tree() else transform.basis.orthonormalized()
+	var local_ang_vel = cur_basis.transposed() * angular_velocity
 	var p_rate = (in_pitch * 5.0) - local_ang_vel.x
 	var r_rate = (in_roll * 5.0) - local_ang_vel.z
 	var y_rate = (in_yaw * 4.0) - local_ang_vel.y
@@ -350,16 +368,27 @@ func _apply_motor_forces(delta: float) -> void:
 		var ge_factor = 1.0 - (altitude_agl / ground_effect_dist)
 		total_thrust *= (1.0 + (ge_factor * ground_effect_mult))
 
-	var cur_basis = global_transform.basis if is_inside_tree() else transform.basis
+	var cur_basis = global_transform.basis.orthonormalized() if is_inside_tree() else transform.basis.orthonormalized()
 	var thrust_vector = cur_basis.y * total_thrust
-	apply_central_force(thrust_vector)
+	if thrust_vector.is_finite():
+		apply_central_force(thrust_vector)
 
-	# Aerodynamic Linear Drag
-	var drag_force = -linear_velocity * linear_drag * linear_velocity.length()
-	apply_central_force(drag_force)
+	# Aerodynamic Linear Drag with explicit stability cap
+	var lin_speed = linear_velocity.length()
+	if lin_speed > 0.001 and linear_velocity.is_finite():
+		var max_drag_force = (drone_mass * lin_speed) / maxf(delta, 0.001) * 0.45
+		var natural_drag = lin_speed * linear_drag * lin_speed
+		var final_drag = minf(natural_drag, max_drag_force)
+		apply_central_force(-linear_velocity.normalized() * final_drag)
 
-	# Angular Damping
-	apply_torque(-angular_velocity * angular_drag)
+	# Angular Damping with explicit stability cap
+	var ang_speed = angular_velocity.length()
+	if ang_speed > 0.001 and angular_velocity.is_finite():
+		var approx_inertia = drone_mass * 0.045
+		var max_damping_torque = (approx_inertia * ang_speed) / maxf(delta, 0.001) * 0.45
+		var natural_torque = ang_speed * angular_drag
+		var final_torque = minf(natural_torque, max_damping_torque)
+		apply_torque(-angular_velocity.normalized() * final_torque)
 
 func _emit_telemetry() -> void:
 	var data = {

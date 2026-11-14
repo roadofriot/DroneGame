@@ -84,7 +84,10 @@ func apply_quality_preset(preset_key: String, viewport: Viewport = null, env: En
 		viewport.scaling_3d_scale = cfg.get("render_scale", 1.0)
 
 	if env:
-		env.ssao_enabled = cfg.get("ssao", false)
+		if OS.get_name() != "Android" and OS.get_name() != "iOS":
+			env.ssao_enabled = cfg.get("ssao", false)
+		else:
+			env.ssao_enabled = false
 		env.glow_enabled = cfg.get("glow", true)
 
 	preset_applied.emit(key)
