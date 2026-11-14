@@ -78,12 +78,16 @@ var spawn_transform: Transform3D
 var rth_phase: int = 0 # 0: Ascend, 1: Cruise, 2: Land
 var rth_clearance_altitude: float = 5.0
 
-# PID Controllers for Auto-Level
-var pitch_pid_p: float = 6.0
-var pitch_pid_d: float = 1.2
-var roll_pid_p: float = 6.0
-var roll_pid_d: float = 1.2
-var yaw_rate_p: float = 3.5
+# Automatic Altitude Lock & Station Keeping State
+var held_flight_altitude: float = 3.0
+var has_flight_altitude_lock: bool = false
+
+# Tuned Critical-Damped PID Controllers for Rock-Solid Stability
+var pitch_pid_p: float = 5.5
+var pitch_pid_d: float = 2.8
+var roll_pid_p: float = 5.5
+var roll_pid_d: float = 2.8
+var yaw_rate_p: float = 4.2
 
 func _init() -> void:
 	_load_profiles()
@@ -91,8 +95,8 @@ func _init() -> void:
 func _ready() -> void:
 	mass = drone_mass
 	gravity_scale = 1.0
-	linear_damp = 0.1
-	angular_damp = 0.1
+	linear_damp = 0.5
+	angular_damp = 2.0
 	max_contacts_reported = 4
 	contact_monitor = true
 	spawn_transform = global_transform
@@ -393,10 +397,27 @@ func _process_flying(delta: float) -> void:
 		flight_boundary_reached.emit("GEOFENCE_RADIUS")
 
 	var hover_thrust = (drone_mass * 9.8) / (4.0 * max_thrust_per_motor)
-	var base_thrust = hover_thrust + (in_throttle * 0.45)
+	var base_thrust: float = hover_thrust
+
+	# Station-keeping Altitude Hold when vertical stick is neutral
+	if active_profile.get("altitude_hold", true):
+		if abs(in_throttle) < 0.04:
+			if not has_flight_altitude_lock:
+				held_flight_altitude = clampf(altitude_agl, 0.4, max_flight_altitude)
+				has_flight_altitude_lock = true
+			var alt_err = held_flight_altitude - altitude_agl
+			var vert_damping = linear_velocity.y * 0.40
+			base_thrust = clampf(hover_thrust + (alt_err * 0.22) - vert_damping, 0.15, 0.88)
+		else:
+			has_flight_altitude_lock = false
+			held_flight_altitude = altitude_agl
+			base_thrust = hover_thrust + (in_throttle * 0.45)
+	else:
+		base_thrust = hover_thrust + (in_throttle * 0.45)
+
 	# Tilt compensation: when tilted, increase thrust to maintain altitude
 	var cur_basis_tilt = global_transform.basis.orthonormalized() if (is_inside_tree() and is_node_ready()) else transform.basis.orthonormalized()
-	var tilt_comp = 1.0 / maxf(cur_basis_tilt.y.dot(Vector3.UP), 0.25)
+	var tilt_comp = 1.0 / maxf(cur_basis_tilt.y.dot(Vector3.UP), 0.35)
 	base_thrust = clampf(base_thrust * tilt_comp, 0.0, 1.0)
 
 	# In Acro mode, direct rate control without auto-level
@@ -436,19 +457,26 @@ func _process_flying(delta: float) -> void:
 		if h_force.is_finite():
 			apply_central_force(h_force)
 	else:
-		# Active horizontal braking to maintain rock-solid hover
-		if cur_h_vel.length() > 0.02:
-			var brake_force = -cur_h_vel * 1.8 * drone_mass
+		# Rock-solid GPS-style horizontal braking when sticks centered
+		if cur_h_vel.length() > 0.01:
+			var brake_force = -cur_h_vel * 4.6 * drone_mass
 			if brake_force.is_finite():
 				apply_central_force(brake_force)
+		if cur_h_vel.length() < 0.08:
+			linear_velocity.x = move_toward(linear_velocity.x, 0.0, 12.0 * delta)
+			linear_velocity.z = move_toward(linear_velocity.z, 0.0, 12.0 * delta)
+		angular_velocity.x = move_toward(angular_velocity.x, 0.0, 14.0 * delta)
+		angular_velocity.z = move_toward(angular_velocity.z, 0.0, 14.0 * delta)
 
 	# Direct yaw angular response
 	if abs(in_yaw) > 0.03:
 		var max_yaw_rate_rad = deg_to_rad(active_profile.get("max_yaw_rate_deg", 120.0))
 		var target_yaw_w = in_yaw * max_yaw_rate_rad
 		var cur_yaw_w = angular_velocity.y
-		var yaw_torque_impulse = (target_yaw_w - cur_yaw_w) * 3.5 * (drone_mass * 0.045)
+		var yaw_torque_impulse = (target_yaw_w - cur_yaw_w) * 4.5 * (drone_mass * 0.045)
 		apply_torque(Vector3(0.0, yaw_torque_impulse, 0.0))
+	else:
+		angular_velocity.y = move_toward(angular_velocity.y, 0.0, 12.0 * delta)
 
 func _process_landing(delta: float) -> void:
 	# 1. Active horizontal braking
