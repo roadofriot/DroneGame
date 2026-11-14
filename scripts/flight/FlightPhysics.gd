@@ -9,6 +9,13 @@ const ControlFrame = preload("res://scripts/input/ControlFrame.gd")
 const FlightController = preload("res://scripts/flight/FlightController.gd")
 const FlightStateMachine = preload("res://scripts/flight/FlightStateMachine.gd")
 const FlipController = preload("res://scripts/flight/FlipController.gd")
+const FlightModeManager = preload("res://scripts/flight/FlightModeManager.gd")
+const BrakeController = preload("res://scripts/flight/BrakeController.gd")
+const HeadlessController = preload("res://scripts/flight/HeadlessController.gd")
+const TrimManager = preload("res://scripts/flight/TrimManager.gd")
+const BatteryModel = preload("res://scripts/flight/BatteryModel.gd")
+const RTHController = preload("res://scripts/flight/RTHController.gd")
+const HapticsManager = preload("res://scripts/flight/HapticsManager.gd")
 
 signal telemetry_updated(data: Dictionary)
 signal flight_mode_changed(mode_name: String)
@@ -70,7 +77,16 @@ var active_profile: Dictionary = {}
 var all_profiles: Dictionary = {}
 var flight_controller: FlightController = null
 var flip_controller: FlipController = null
-var battery: float = 1.0 # Normalized battery remaining [0.0, 1.0] (default 1.0 until Phase 7)
+var flight_mode_manager: FlightModeManager = null
+var brake_controller: BrakeController = null
+var headless_controller: HeadlessController = null
+var trim_manager: TrimManager = null
+var battery_model: BatteryModel = null
+var rth_controller: RTHController = null
+var is_boosted: bool = false
+var is_braking: bool = false
+var gimbal_pitch_user_deg: float = -15.0
+var battery: float = 1.0 # Normalized battery remaining [0.0, 1.0]
 
 # Motor RPMs [0.0 .. 1.0] for FL, FR, RL, RR
 var motor_rpms: Array[float] = [0.0, 0.0, 0.0, 0.0]
@@ -118,6 +134,12 @@ func _init() -> void:
 	flight_controller = FlightController.new()
 	state_machine = FlightStateMachine.new()
 	flip_controller = FlipController.new()
+	flight_mode_manager = FlightModeManager.new()
+	brake_controller = BrakeController.new()
+	headless_controller = HeadlessController.new()
+	trim_manager = TrimManager.new()
+	battery_model = BatteryModel.new(56.24)
+	rth_controller = RTHController.new()
 	_load_profiles()
 
 func _ready() -> void:
@@ -145,6 +167,23 @@ func _ready() -> void:
 			input_router.emergency_stop_pressed.connect(_on_emergency_stop_pressed)
 		if input_router.has_signal("emergency_cut_requested"):
 			input_router.emergency_cut_requested.connect(_on_emergency_stop_pressed)
+		if input_router.has_signal("brake_pressed"):
+			input_router.brake_pressed.connect(func(b): is_braking = b)
+		if input_router.has_signal("boost_pressed"):
+			input_router.boost_pressed.connect(func(b): is_boosted = b)
+		if input_router.has_signal("headless_toggle_requested"):
+			input_router.headless_toggle_requested.connect(func(): headless_controller.toggle())
+		if input_router.has_signal("trim_pitch_requested"):
+			input_router.trim_pitch_requested.connect(func(d): trim_manager.adjust_pitch(d))
+		if input_router.has_signal("trim_roll_requested"):
+			input_router.trim_roll_requested.connect(func(d): trim_manager.adjust_roll(d))
+		if input_router.has_signal("camera_tilt_requested"):
+			input_router.camera_tilt_requested.connect(func(d): gimbal_pitch_user_deg = clampf(gimbal_pitch_user_deg + d * 30.0, -90.0, 20.0))
+
+	if battery_model:
+		battery_model.battery_warning_low.connect(func(_pct): HapticsManager.play_haptic(HapticsManager.Effect.BATTERY_LOW))
+		battery_model.auto_rth_triggered.connect(func(): trigger_rth())
+		battery_model.forced_landing_triggered.connect(func(): land())
 
 	if state_machine:
 		state_machine.state_name_changed.connect(func(n): drone_state_changed.emit(n))
@@ -372,10 +411,20 @@ func _update_battery(delta: float) -> void:
 	var current_amps = idle_drain_amps + (total_motor_load * max_thrust_amps)
 
 	var drain_mah = (current_amps * 1000.0) * (delta / 3600.0)
+	if is_boosted:
+		drain_mah *= 2.0 # Pilot boost mode doubles power consumption
+
 	battery_remaining_mah = maxf(0.0, battery_remaining_mah - drain_mah)
 	battery_percent = (battery_remaining_mah / battery_capacity_mah) * 100.0
 	battery = battery_percent / 100.0
 	battery_voltage = 13.6 + (battery_percent / 100.0) * 3.2
+
+	if battery_model:
+		battery_model.remaining_wh = (battery_percent / 100.0) * battery_model.capacity_wh
+		if battery_percent <= 15.0 and current_state == DroneState.FLYING:
+			trigger_rth()
+		elif battery_percent <= 5.0 and (current_state == DroneState.FLYING or current_state == DroneState.HOVER or current_state == DroneState.RTH):
+			land()
 
 # --- State Process Handlers ---
 
@@ -473,6 +522,35 @@ func _process_flying(delta: float) -> void:
 	var in_yaw = input_router.yaw if input_router else 0.0
 	var in_pitch = input_router.pitch if input_router else 0.0
 	var in_roll = input_router.roll if input_router else 0.0
+
+	# Apply Trim
+	if trim_manager:
+		var trimmed = trim_manager.apply_trim(Vector2(in_roll, in_pitch))
+		in_roll = trimmed.x
+		in_pitch = trimmed.y
+
+	# Apply Headless Mode
+	if headless_controller and headless_controller.is_enabled:
+		var corrected = headless_controller.process_stick(Vector2(in_roll, in_pitch), deg_to_rad(heading_deg))
+		in_roll = corrected.x
+		in_pitch = corrected.y
+
+	# Apply Active Braking in ANGLE mode
+	if brake_controller and (flight_mode_manager == null or flight_mode_manager.current_mode == FlightModeManager.Mode.ANGLE):
+		var heading_b = Basis(Vector3.UP, deg_to_rad(heading_deg))
+		var brake_res = brake_controller.compute_brake_tilt(linear_velocity, heading_b, Vector2(in_roll, in_pitch), 0.12, flight_controller.max_tilt, is_braking)
+		if brake_res.active:
+			in_pitch += brake_res.pitch_offset / maxf(0.001, flight_controller.max_tilt)
+			in_roll += brake_res.roll_offset / maxf(0.001, flight_controller.max_tilt)
+			in_pitch = clampf(in_pitch, -1.0, 1.0)
+			in_roll = clampf(in_roll, -1.0, 1.0)
+
+	# Apply Pilot Boost (x1.4 tilt and climb)
+	if is_boosted:
+		in_pitch = clampf(in_pitch * 1.4, -1.0, 1.0)
+		in_roll = clampf(in_roll * 1.4, -1.0, 1.0)
+		if in_throttle > 0.0:
+			in_throttle = clampf(in_throttle * 1.4, 0.0, 1.0)
 
 	# Enforce Flight Boundaries (Ceiling and Horizontal Geofence)
 	if altitude_agl >= max_flight_altitude:
@@ -637,12 +715,18 @@ func trigger_rth() -> bool:
 	current_state = DroneState.RTH
 	rth_phase = 0
 	rth_clearance_altitude = maxf(altitude_agl, 5.0)
+	if rth_controller:
+		rth_controller.record_home(spawn_transform.origin)
+		var cur_pos = global_position if is_inside_tree() else position
+		rth_controller.start_rth(cur_pos, altitude_agl)
 	drone_state_changed.emit("RTH")
 	rth_state_changed.emit(true, get_home_distance())
 	print("[FLIGHT] RTH_ACTIVATED — Clearance Altitude: %.1f m" % rth_clearance_altitude)
 	return true
 
 func cancel_rth() -> void:
+	if rth_controller:
+		rth_controller.cancel("PILOT_CANCELLED")
 	if current_state == DroneState.RTH:
 		current_state = DroneState.FLYING
 		drone_state_changed.emit("FLYING")
@@ -684,6 +768,10 @@ func reset_to_pad() -> void:
 	battery_remaining_mah = battery_capacity_mah
 	battery_percent = 100.0
 	battery = 1.0
+	if battery_model:
+		battery_model.reset()
+	if rth_controller:
+		rth_controller.cancel("RESET_TO_PAD")
 	total_flight_time = 0.0
 	current_state = DroneState.DISARMED
 	drone_state_changed.emit("DISARMED")
@@ -854,6 +942,7 @@ func perform_flip(dir: Vector2 = Vector2(0, -1)) -> bool:
 	if requested:
 		state_machine.transition_to(FlightStateMachine.State.FLIPPING, "FLIP_STARTED")
 		drone_state_changed.emit("FLIPPING")
+		HapticsManager.play_haptic(HapticsManager.Effect.FLIP_COMPLETED)
 		print("[FLIGHT] FLIP_INITIATED — Direction: %s" % str(dir))
 		return true
 	return false
@@ -862,6 +951,8 @@ func is_flipping() -> bool:
 	return flip_controller != null and flip_controller.is_active()
 
 func _on_flight_mode_cycle_requested() -> void:
+	if flight_mode_manager:
+		flight_mode_manager.cycle_mode()
 	var mode_keys = ["normal", "cine", "sport", "arcade", "acro"]
 	var curr_idx = mode_keys.find(active_profile_name)
 	var next_idx = (curr_idx + 1) % mode_keys.size()
@@ -875,3 +966,4 @@ func _on_body_entered(_body: Node) -> void:
 		current_state = DroneState.CRASHED
 		drone_state_changed.emit("CRASHED")
 		drone_crashed.emit(impact_velocity)
+		HapticsManager.play_haptic(HapticsManager.Effect.COLLISION)

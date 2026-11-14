@@ -44,12 +44,19 @@ All control inputs (Hardware Gamepad, Keyboard, and Virtual Touch Joysticks) are
 | **Yaw Left / Right** | `A` / `D` | Left Stick Horizontal | Left Joystick X-Axis |
 | **Pitch Forward / Backward**| `Up` / `Down` (or `I`/`K`) | Right Stick Vertical | Right Joystick Y-Axis |
 | **Roll Left / Right** | `Left` / `Right` (or `J`/`L`) | Right Stick Horizontal | Right Joystick X-Axis |
-| **Stunt Flip (4-Way)** | `F` + Direction | Button B / East + Stick | `FLIP (F)` Button + Stick |
-| **Takeoff / Land / Recover**| `Space` | Button A (Cross) | `TAKEOFF` / `LAND` Button |
-| **Switch Camera Mode** | `C` | Button X (Square) | `CAM (C)` Button |
-| **Cycle Flight Profile** | `M` | Right Bumper | `MODE (M)` Button |
-| **Return to Home (RTH)** | `H` | D-Pad Down | Telemetry / HUD |
-| **Reset to Launch Pad** | `R` | Button Y (Triangle) | `RESET (R)` Button |
+| **Stunt Flip (4-Way)** | `F` + Direction | Right Shoulder (RB) + Stick | `FLIP` Button + Stick |
+| **Takeoff / Land** | `Space` / `T` | Button A (South) | `TAKEOFF` / `LAND` Button |
+| **Active Brake / Damp** | `B` (Hold) | Left Shoulder (LB) | `BRAKE` Button |
+| **Pilot Boost (x1.4 / 2x Wh)**| `Shift` (Hold) | Left Stick Click (L3) | HUD Boost Trigger |
+| **Headless Mode Toggle** | `U` | D-Pad Left | HUD Headless Toggle |
+| **Pitch Trim Adjust** | `[` / `]` | D-Pad Up / Down (+Back) | HUD Trim Controls |
+| **Roll Trim Adjust** | `;` / `'` | D-Pad Left / Right (+Back)| HUD Trim Controls |
+| **Camera Gimbal Tilt** | `PageUp` / `PageDown` | Left Trigger / Right Stick Y | HUD Gimbal Slider |
+| **Switch Camera Mode** | `C` | Button X (West) | `CAM` Button |
+| **Cycle Flight Mode** | `M` | D-Pad Up | `MODE` Button |
+| **Return to Home (RTH)** | `H` (Hold) | D-Pad Down | `RTH` Button |
+| **Emergency Motor Cut** | `Backspace` / `X` (0.7s)| Button Back/Select (0.7s) | `E-STOP` Button |
+| **Reset to Launch Pad** | `R` | Button Y (North) | `RESET` Button |
 
 ---
 

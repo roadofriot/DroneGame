@@ -14,6 +14,14 @@ signal reset_pressed
 signal flip_pressed(dir: Vector2)
 signal emergency_stop_pressed
 
+# Phase 7 Advanced Feature Signals
+signal brake_pressed(is_braking: bool)
+signal headless_toggle_requested
+signal boost_pressed(is_boosting: bool)
+signal trim_pitch_requested(direction: float)
+signal trim_roll_requested(direction: float)
+signal camera_tilt_requested(delta: float)
+
 # Backward Compatibility Signals
 signal takeoff_requested
 signal land_requested
@@ -264,6 +272,35 @@ func _poll_action_triggers(delta: float) -> void:
 	# Flip / Stunt Action (Snaps to 4 Cardinal Directions based on Stick at Press Time)
 	if Input.is_action_just_pressed("stunt_flip") or _is_key_just_pressed(KEY_F):
 		_trigger_directional_flip()
+
+	# Active Brake (Key B or Gamepad Left Bumper)
+	var brake_held = (InputMap.has_action("flight_brake") and Input.is_action_pressed("flight_brake")) or Input.is_key_pressed(KEY_B) or Input.is_joy_button_pressed(0, JOY_BUTTON_LEFT_SHOULDER)
+	brake_pressed.emit(brake_held)
+
+	# Pilot Boost (Hold Shift or Gamepad Left Stick Click)
+	var boost_held = (InputMap.has_action("flight_boost") and Input.is_action_pressed("flight_boost")) or Input.is_key_pressed(KEY_SHIFT) or Input.is_joy_button_pressed(0, JOY_BUTTON_LEFT_STICK)
+	boost_pressed.emit(boost_held)
+
+	# Headless Mode Toggle (Key U or Gamepad D-Pad Left)
+	if (InputMap.has_action("flight_headless_toggle") and Input.is_action_just_pressed("flight_headless_toggle")) or _is_key_just_pressed(KEY_U) or _is_key_just_pressed(KEY_H):
+		headless_toggle_requested.emit()
+
+	# Pitch & Roll Trim Adjustments (Keys [ / ] and ; / ')
+	if _is_key_just_pressed(KEY_BRACKETLEFT):
+		trim_pitch_requested.emit(-1.0)
+	elif _is_key_just_pressed(KEY_BRACKETRIGHT):
+		trim_pitch_requested.emit(1.0)
+
+	if _is_key_just_pressed(KEY_SEMICOLON):
+		trim_roll_requested.emit(-1.0)
+	elif _is_key_just_pressed(KEY_APOSTROPHE):
+		trim_roll_requested.emit(1.0)
+
+	# Camera Gimbal Pitch (PageUp / PageDown)
+	if Input.is_key_pressed(KEY_PAGEUP):
+		camera_tilt_requested.emit(1.0 * delta)
+	elif Input.is_key_pressed(KEY_PAGEDOWN):
+		camera_tilt_requested.emit(-1.0 * delta)
 
 	# Gamepad Button Debouncing
 	_poll_gamepad_buttons()
