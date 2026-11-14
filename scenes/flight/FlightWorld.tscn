@@ -118,12 +118,13 @@ fpv_camera = NodePath("../Quadcopter/DroneRig/Fuselage/GimbalMount/GimbalPitch/F
 [node name="ChaseCamera" type="Camera3D" parent="CameraDirector"]
 transform = Transform3D(1, 0, 0, 0, 0.965926, 0.258819, 0, -0.258819, 0.965926, 0, 1.2, 3.2)
 current = true
-fov = 75.0
+fov = 68.0
 
-[node name="FlightHUD" parent="." node_paths=PackedStringArray("input_router", "flight_physics", "camera_director") instance=ExtResource("5_hud")]
+[node name="FlightHUD" parent="." node_paths=PackedStringArray("input_router", "flight_physics", "camera_director", "audio_director") instance=ExtResource("5_hud")]
 input_router = NodePath("../InputRouter")
 flight_physics = NodePath("../Quadcopter")
 camera_director = NodePath("../CameraDirector")
+audio_director = NodePath("../AudioDirector")
 
 [node name="MissionOverlay" parent="FlightHUD" instance=ExtResource("9_overlay")]
 

@@ -167,14 +167,14 @@ horizontal_alignment = 1
 anchors_preset = 2
 anchor_top = 1.0
 anchor_bottom = 1.0
-offset_top = -220.0
-offset_right = 220.0
+offset_top = -280.0
+offset_right = 280.0
 grow_vertical = 0
-theme_override_constants/margin_left = 32
-theme_override_constants/margin_bottom = 32
+theme_override_constants/margin_left = 24
+theme_override_constants/margin_bottom = 24
 
 [node name="LeftJoystick" type="Control" parent="LeftCluster"]
-custom_minimum_size = Vector2(160, 160)
+custom_minimum_size = Vector2(240, 240)
 layout_mode = 2
 script = ExtResource("2_joystick")
 
@@ -184,15 +184,15 @@ anchor_left = 1.0
 anchor_top = 1.0
 anchor_right = 1.0
 anchor_bottom = 1.0
-offset_left = -220.0
-offset_top = -220.0
+offset_left = -280.0
+offset_top = -280.0
 grow_horizontal = 0
 grow_vertical = 0
-theme_override_constants/margin_right = 32
-theme_override_constants/margin_bottom = 32
+theme_override_constants/margin_right = 24
+theme_override_constants/margin_bottom = 24
 
 [node name="RightJoystick" type="Control" parent="RightCluster"]
-custom_minimum_size = Vector2(160, 160)
+custom_minimum_size = Vector2(240, 240)
 layout_mode = 2
 script = ExtResource("2_joystick")
 
@@ -202,51 +202,63 @@ anchor_left = 0.5
 anchor_top = 1.0
 anchor_right = 0.5
 anchor_bottom = 1.0
-offset_left = -250.0
-offset_top = -75.0
-offset_right = 250.0
+offset_left = -440.0
+offset_top = -80.0
+offset_right = 440.0
 grow_horizontal = 2
 grow_vertical = 0
-theme_override_constants/margin_bottom = 24
+theme_override_constants/margin_bottom = 18
 
 [node name="HBox" type="HBoxContainer" parent="BottomBar"]
 layout_mode = 2
-theme_override_constants/separation = 16
+theme_override_constants/separation = 12
 alignment = 1
 
 [node name="BtnTakeoffLand" type="Button" parent="BottomBar/HBox"]
-custom_minimum_size = Vector2(110, 42)
+custom_minimum_size = Vector2(115, 48)
 layout_mode = 2
 theme_override_styles/normal = SubResource("StyleBoxFlat_BtnNormal")
+theme_override_font_sizes/font_size = 15
 text = "TAKEOFF"
 
 [node name="BtnCamera" type="Button" parent="BottomBar/HBox"]
-custom_minimum_size = Vector2(90, 42)
+custom_minimum_size = Vector2(95, 48)
 layout_mode = 2
 theme_override_styles/normal = SubResource("StyleBoxFlat_BtnNormal")
-text = "CAM (C)"
+theme_override_font_sizes/font_size = 15
+text = "📷 CAM"
 
 [node name="BtnMode" type="Button" parent="BottomBar/HBox"]
-custom_minimum_size = Vector2(90, 42)
+custom_minimum_size = Vector2(95, 48)
 layout_mode = 2
 theme_override_styles/normal = SubResource("StyleBoxFlat_BtnNormal")
-text = "MODE (M)"
+theme_override_font_sizes/font_size = 15
+text = "🕹️ MODE"
 
-[node name="BtnStunt" type="Button" parent="BottomBar/HBox"]
-visible = false
-custom_minimum_size = Vector2(90, 42)
+[node name="BtnSound" type="Button" parent="BottomBar/HBox"]
+custom_minimum_size = Vector2(100, 48)
 layout_mode = 2
 theme_override_styles/normal = SubResource("StyleBoxFlat_BtnNormal")
-text = "FLIP (F)"
+theme_override_font_sizes/font_size = 15
+text = "🔊 SOUND"
+
+[node name="BtnEngine" type="Button" parent="BottomBar/HBox"]
+custom_minimum_size = Vector2(105, 48)
+layout_mode = 2
+theme_override_styles/normal = SubResource("StyleBoxFlat_BtnNormal")
+theme_override_font_sizes/font_size = 15
+text = "⚙️ TURBO"
 
 [node name="BtnWorlds" type="Button" parent="BottomBar/HBox"]
-custom_minimum_size = Vector2(90, 42)
+custom_minimum_size = Vector2(95, 48)
 layout_mode = 2
 theme_override_styles/normal = SubResource("StyleBoxFlat_BtnNormal")
-text = "WORLDS"
+theme_override_font_sizes/font_size = 15
+text = "🌍 WORLDS"
 
 [node name="BtnReset" type="Button" parent="BottomBar/HBox"]
-custom_minimum_size = Vector2(90, 42)
+custom_minimum_size = Vector2(95, 48)
 layout_mode = 2
 theme_override_styles/normal = SubResource("StyleBoxFlat_BtnNormal")
-text = "RESET (R)"
+theme_override_font_sizes/font_size = 15
+text = "🔄 RESET"

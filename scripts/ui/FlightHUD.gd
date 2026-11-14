@@ -6,6 +6,7 @@ extends CanvasLayer
 @export var input_router: InputRouter
 @export var flight_physics: FlightPhysics
 @export var camera_director: FlightCameraDirector
+@export var audio_director: AudioDirector
 
 # Left and Right Virtual Sticks
 @onready var left_joystick: VirtualJoystick = $LeftCluster/LeftJoystick
@@ -31,10 +32,15 @@ signal world_select_requested
 @onready var btn_camera: Button = $BottomBar/HBox/BtnCamera
 @onready var btn_reset: Button = $BottomBar/HBox/BtnReset
 @onready var btn_mode: Button = $BottomBar/HBox/BtnMode
+@onready var btn_sound: Button = get_node_or_null("BottomBar/HBox/BtnSound")
+@onready var btn_engine: Button = get_node_or_null("BottomBar/HBox/BtnEngine")
 @onready var btn_stunt: Button = get_node_or_null("BottomBar/HBox/BtnStunt")
 @onready var btn_worlds: Button = get_node_or_null("BottomBar/HBox/BtnWorlds")
 
 func _ready() -> void:
+	if not audio_director:
+		audio_director = get_node_or_null("../AudioDirector")
+
 	if left_joystick:
 		left_joystick.stick_moved.connect(_on_left_stick_moved)
 		left_joystick.stick_released.connect(_on_left_stick_released)
@@ -51,6 +57,12 @@ func _ready() -> void:
 		btn_reset.pressed.connect(_on_btn_reset_pressed)
 	if btn_mode:
 		btn_mode.pressed.connect(_on_btn_mode_pressed)
+	if btn_sound:
+		btn_sound.pressed.connect(_on_btn_sound_pressed)
+		_update_sound_button_label()
+	if btn_engine:
+		btn_engine.pressed.connect(_on_btn_engine_pressed)
+		_update_engine_button_label()
 	if btn_stunt:
 		btn_stunt.pressed.connect(_on_btn_stunt_pressed)
 	if btn_worlds:
@@ -69,6 +81,11 @@ func _on_left_stick_moved(vec: Vector2) -> void:
 	if input_router:
 		input_router.set_virtual_left_stick(vec.x, vec.y)
 
+	# Auto-takeoff when player pushes throttle stick up while disarmed
+	if flight_physics and flight_physics.current_state == FlightPhysics.DroneState.DISARMED:
+		if vec.y > 0.25:
+			flight_physics.takeoff()
+
 func _on_left_stick_released() -> void:
 	if input_router:
 		input_router.set_virtual_left_stick(0.0, 0.0)
@@ -82,8 +99,34 @@ func _on_right_stick_released() -> void:
 		input_router.set_virtual_right_stick(0.0, 0.0)
 
 func _on_btn_takeoff_land_pressed() -> void:
-	if input_router:
+	if flight_physics:
+		if flight_physics.current_state == FlightPhysics.DroneState.DISARMED:
+			flight_physics.takeoff()
+		elif flight_physics.current_state == FlightPhysics.DroneState.FLYING:
+			flight_physics.land()
+	elif input_router:
 		input_router.request_takeoff_land()
+
+func _on_btn_sound_pressed() -> void:
+	if audio_director:
+		audio_director.toggle_mute()
+		_update_sound_button_label()
+
+func _update_sound_button_label() -> void:
+	if btn_sound:
+		var muted = audio_director.is_audio_muted if audio_director else false
+		btn_sound.text = "🔇 MUTE" if muted else "🔊 SOUND"
+
+func _on_btn_engine_pressed() -> void:
+	if audio_director and audio_director.has_method("cycle_motor_sound_profile"):
+		var p_name = audio_director.cycle_motor_sound_profile()
+		_update_engine_button_label(p_name)
+
+func _update_engine_button_label(p_name: String = "") -> void:
+	if btn_engine:
+		if p_name == "" and audio_director and "current_sound_profile" in audio_director:
+			p_name = AudioDirector.MotorSoundProfile.keys()[audio_director.current_sound_profile]
+		btn_engine.text = "⚙️ %s" % (p_name.to_upper() if p_name != "" else "TURBO")
 
 func _on_btn_camera_pressed() -> void:
 	if camera_director:

@@ -5,7 +5,7 @@
 [ext_resource type="Script" path="res://scripts/flight/StuntEngine.gd" id="3_stunt"]
 
 [sub_resource type="BoxShape3D" id="BoxShape3D_body"]
-size = Vector3(0.48, 0.12, 0.48)
+size = Vector3(0.65, 0.16, 0.65)
 
 [sub_resource type="StandardMaterial3D" id="Mat_GraphiteFrame"]
 albedo_color = Color(0.12, 0.14, 0.16, 1)
@@ -100,6 +100,7 @@ shape = SubResource("BoxShape3D_body")
 target_position = Vector3(0, -50, 0)
 
 [node name="DroneRig" type="Node3D" parent="." node_paths=PackedStringArray("flight_physics", "gimbal_pitch_mount", "gimbal_camera", "prop_fl", "prop_fr", "prop_rl", "prop_rr")]
+transform = Transform3D(1.6, 0, 0, 0, 1.6, 0, 0, 0, 1.6, 0, 0, 0)
 script = ExtResource("2_rig")
 flight_physics = NodePath("..")
 gimbal_pitch_mount = NodePath("Fuselage/GimbalMount/GimbalPitch")

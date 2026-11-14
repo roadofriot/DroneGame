@@ -9,12 +9,12 @@ enum CameraMode { CHASE, FPV, ORBIT, TOP_DOWN }
 @export var chase_camera: Camera3D
 @export var fpv_camera: Camera3D
 
-# Chase camera tuning
-@export var chase_distance: float = 3.2
-@export var chase_height: float = 1.1
-@export var position_smooth_speed: float = 8.0
-@export var rotation_smooth_speed: float = 12.0
-@export var velocity_lookahead_factor: float = 0.25
+# Chase camera tuning - calibrated for bold, prominent mobile framing
+@export var chase_distance: float = 2.35
+@export var chase_height: float = 0.85
+@export var position_smooth_speed: float = 9.0
+@export var rotation_smooth_speed: float = 14.0
+@export var velocity_lookahead_factor: float = 0.22
 
 var current_mode: CameraMode = CameraMode.CHASE
 var orbit_angle: float = 0.0
