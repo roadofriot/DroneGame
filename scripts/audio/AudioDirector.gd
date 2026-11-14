@@ -16,7 +16,7 @@ var wind_player: AudioStreamPlayer
 var sfx_player: AudioStreamPlayer
 
 var is_audio_muted: bool = false
-var is_drone_sound_muted: bool = false
+var is_drone_sound_muted: bool = true # Drone motor sound stopped / muted by default
 var master_volume: float = 1.0
 var sfx_volume: float = 0.85
 var motor_volume: float = 0.8
@@ -73,20 +73,21 @@ func _process(_delta: float) -> void:
 		FlightPhysics.DroneState.MOTOR_STARTING
 	]
 
+	# Dynamic pitch scaling based on selected profile
+	var min_pitch = 0.70
+	var max_pitch = 2.35
+	if current_sound_profile == MotorSoundProfile.RACER:
+		min_pitch = 0.85
+		max_pitch = 2.70
+	elif current_sound_profile == MotorSoundProfile.CINEMATIC:
+		min_pitch = 0.60
+		max_pitch = 1.85
+
+	motor_player.pitch_scale = clampf(min_pitch + (avg_rpm * (max_pitch - min_pitch)), 0.4, 3.0)
+
 	if can_play_motor and is_airborne:
 		if is_inside_tree() and not motor_player.playing:
 			motor_player.play()
-		# Dynamic pitch scaling based on selected profile
-		var min_pitch = 0.70
-		var max_pitch = 2.35
-		if current_sound_profile == MotorSoundProfile.RACER:
-			min_pitch = 0.85
-			max_pitch = 2.70
-		elif current_sound_profile == MotorSoundProfile.CINEMATIC:
-			min_pitch = 0.60
-			max_pitch = 1.85
-
-		motor_player.pitch_scale = clampf(min_pitch + (avg_rpm * (max_pitch - min_pitch)), 0.4, 3.0)
 		motor_player.volume_db = linear_to_db(motor_volume * clampf(0.25 + (avg_rpm * 0.75), 0.1, 1.0))
 	else:
 		if motor_player.playing:
