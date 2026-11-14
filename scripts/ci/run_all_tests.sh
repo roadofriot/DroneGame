@@ -16,6 +16,7 @@ echo "==========================================================================
 
 TEST_SUITES=(
   "tests/unit/test_flight_physics.gd:Phase 1 (Flight Physics & Controls)"
+  "tests/unit/test_input_router.gd:Phase 2 (Unified Input Layer & ControlFrame)"
   "tests/unit/test_core_gameplay.gd:Phase 2 (Core Loop, Missions & Economy)"
   "tests/unit/test_world_catalogue.gd:Phase 3 (Authored 3D Worlds Catalogue)"
   "tests/unit/test_stunt_and_academy.gd:Phase 4 (Flight Academy & Stunt Engine)"

@@ -30,7 +30,7 @@ enum InputSource { KEYBOARD, GAMEPAD, TOUCH, NONE }
 var last_input_source: InputSource = InputSource.NONE
 
 # Normalized Flight Outputs
-var current_frame: ControlFrame = ControlFrame.new()
+var current_frame: RefCounted = null
 
 # Direct property accessors for backward compatibility
 var throttle: float = 0.0
@@ -61,7 +61,12 @@ var _k_roll: float = 0.0
 # Key Debounce State for Actions
 var _key_states: Dictionary = {}
 
+func _init() -> void:
+	current_frame = ControlFrame.new()
+
 func _ready() -> void:
+	if not current_frame:
+		current_frame = ControlFrame.new()
 	Input.joy_connection_changed.connect(_on_joy_connection_changed)
 
 func _on_joy_connection_changed(device: int, connected: bool) -> void:
@@ -209,16 +214,16 @@ func _poll_action_triggers() -> void:
 		takeoff_land_requested.emit()
 
 	# Return to Home (RTH)
-	if Input.is_action_just_pressed("flight_rth") or _is_key_just_pressed(KEY_H):
+	if _is_key_just_pressed(KEY_H):
 		rth_requested.emit()
 
 	# Reset to Pad
-	if _is_key_just_pressed(KEY_R):
+	if Input.is_action_just_pressed("flight_reset") or _is_key_just_pressed(KEY_R):
 		reset_pressed.emit()
 		reset_requested.emit()
 
 	# Camera Toggle
-	if Input.is_action_just_pressed("flight_camera_toggle") or _is_key_just_pressed(KEY_C):
+	if Input.is_action_just_pressed("camera_mode") or _is_key_just_pressed(KEY_C):
 		camera_toggle_requested.emit()
 
 	# Flight Mode Cycle

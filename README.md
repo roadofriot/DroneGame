@@ -34,9 +34,11 @@ godot --headless -s tests/unit/test_flight_physics.gd
 | **Yaw Left / Right** | `A` / `D` | Left Stick Horizontal | Left Joystick X-Axis |
 | **Pitch Forward / Backward**| `Up` / `Down` (or `I`/`K`) | Right Stick Vertical | Right Joystick Y-Axis |
 | **Roll Left / Right** | `Left` / `Right` (or `J`/`L`) | Right Stick Horizontal | Right Joystick X-Axis |
+| **Stunt Flip (4-Way)** | `F` + Direction | Button B / East + Stick | `FLIP (F)` Button + Stick |
 | **Takeoff / Land / Recover**| `Space` | Button A (Cross) | `TAKEOFF` / `LAND` Button |
 | **Switch Camera Mode** | `C` | Button X (Square) | `CAM (C)` Button |
 | **Cycle Flight Profile** | `M` | Right Bumper | `MODE (M)` Button |
+| **Return to Home (RTH)** | `H` | D-Pad Down | Telemetry / HUD |
 | **Reset to Launch Pad** | `R` | Button Y (Triangle) | `RESET (R)` Button |
 
 ---

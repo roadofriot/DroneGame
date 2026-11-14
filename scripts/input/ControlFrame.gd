@@ -32,8 +32,8 @@ func reset() -> void:
 	pitch = 0.0
 	roll = 0.0
 
-func duplicate_frame() -> ControlFrame:
-	return ControlFrame.new(throttle, yaw, pitch, roll)
+func duplicate_frame() -> RefCounted:
+	return get_script().new(throttle, yaw, pitch, roll)
 
 func to_dict() -> Dictionary:
 	return {
