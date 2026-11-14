@@ -1,0 +1,47 @@
+{
+  "schema_version": 1,
+  "worlds": [
+    {
+      "id": "training_valley",
+      "name": "Training Valley",
+      "region": "Lumbini Foothills, Nepal",
+      "description": "Gentle rolling hills, wide runway, and calm winds designed for mastering basic quadcopter flight dynamics.",
+      "difficulty": "Beginner",
+      "unlocked_by_default": true,
+      "required_level": 1,
+      "scene_path": "res://scenes/worlds/TrainingValley.tscn",
+      "spawn_position": [0.0, 0.1, 0.0],
+      "wind_vector": [0.0, 0.0, 0.0],
+      "gravity_scale": 1.0,
+      "missions": ["training_gate_run", "training_coin_hunt", "training_precision_landing"]
+    },
+    {
+      "id": "butwal_city",
+      "name": "Butwal-Inspired City",
+      "region": "Rupandehi Valley, Nepal",
+      "description": "A vibrant Sub-Himalayan urban valley with multi-story buildings, bridge crossings, and rooftop helipads.",
+      "difficulty": "Intermediate",
+      "unlocked_by_default": true,
+      "required_level": 2,
+      "scene_path": "res://scenes/worlds/ButwalCity.tscn",
+      "spawn_position": [0.0, 12.1, 0.0],
+      "wind_vector": [0.4, 0.0, -0.2],
+      "gravity_scale": 1.0,
+      "missions": ["butwal_rooftop_dash", "butwal_street_slalom"]
+    },
+    {
+      "id": "mountain_lake",
+      "name": "Mountain Lake",
+      "region": "High Himalayas, Nepal",
+      "description": "An alpine glacial lake nestled between sheer cliff walls with water skimming challenges and island targets.",
+      "difficulty": "Advanced",
+      "unlocked_by_default": false,
+      "required_level": 3,
+      "scene_path": "res://scenes/worlds/MountainLake.tscn",
+      "spawn_position": [0.0, 2.1, 0.0],
+      "wind_vector": [-0.6, 0.0, 0.5],
+      "gravity_scale": 1.0,
+      "missions": ["lake_island_hopper", "mountain_ridge_dive"]
+    }
+  ]
+}

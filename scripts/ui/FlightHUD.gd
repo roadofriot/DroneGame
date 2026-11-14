@@ -11,6 +11,8 @@ extends CanvasLayer
 @onready var left_joystick: VirtualJoystick = $LeftCluster/LeftJoystick
 @onready var right_joystick: VirtualJoystick = $RightCluster/RightJoystick
 
+signal world_select_requested
+
 # Top Telemetry Labels
 @onready var label_flight_mode: Label = $TopBar/HBox/ModePill/LabelMode
 @onready var label_battery: Label = $TopBar/HBox/BatteryPill/LabelBattery
@@ -29,6 +31,7 @@ extends CanvasLayer
 @onready var btn_camera: Button = $BottomBar/HBox/BtnCamera
 @onready var btn_reset: Button = $BottomBar/HBox/BtnReset
 @onready var btn_mode: Button = $BottomBar/HBox/BtnMode
+@onready var btn_worlds: Button = get_node_or_null("BottomBar/HBox/BtnWorlds")
 
 func _ready() -> void:
 	if left_joystick:
@@ -47,6 +50,8 @@ func _ready() -> void:
 		btn_reset.pressed.connect(_on_btn_reset_pressed)
 	if btn_mode:
 		btn_mode.pressed.connect(_on_btn_mode_pressed)
+	if btn_worlds:
+		btn_worlds.pressed.connect(func(): world_select_requested.emit())
 
 	if flight_physics:
 		flight_physics.telemetry_updated.connect(_on_telemetry_updated)

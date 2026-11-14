@@ -1,0 +1,255 @@
+[gd_scene load_steps=32 format=3 uid="uid://c3mountainlake01"]
+
+[ext_resource type="Script" path="res://scripts/core/FlightWorld.gd" id="1_world"]
+[ext_resource type="Script" path="res://scripts/input/InputRouter.gd" id="2_input"]
+[ext_resource type="PackedScene" uid="uid://c3q4m8r8d1p01" path="res://scenes/drones/QuadcopterRig.tscn" id="3_drone"]
+[ext_resource type="Script" path="res://scripts/camera/FlightCameraDirector.gd" id="4_cam_director"]
+[ext_resource type="PackedScene" uid="uid://b0yqvdku6s201" path="res://scenes/ui/FlightHUD.tscn" id="5_hud"]
+[ext_resource type="Script" path="res://scripts/missions/MissionManager.gd" id="6_missions"]
+[ext_resource type="PackedScene" uid="uid://b2gate8s1p01" path="res://scenes/missions/MissionGate.tscn" id="7_gate"]
+[ext_resource type="PackedScene" uid="uid://d1k3m4coin01" path="res://scenes/collectibles/CollectibleCoin.tscn" id="8_coin"]
+[ext_resource type="PackedScene" uid="uid://d2missonlay01" path="res://scenes/ui/MissionOverlay.tscn" id="9_overlay"]
+[ext_resource type="PackedScene" uid="uid://d3mresult01" path="res://scenes/ui/MissionResults.tscn" id="10_results"]
+[ext_resource type="PackedScene" uid="uid://b3pause01" path="res://scenes/ui/PauseMenu.tscn" id="11_pause"]
+[ext_resource type="PackedScene" uid="uid://d4wselect01" path="res://scenes/ui/WorldSelectMenu.tscn" id="12_wselect"]
+
+[sub_resource type="ProceduralSkyMaterial" id="ProceduralSkyMaterial_lake"]
+sky_top_color = Color(0.12, 0.4, 0.85, 1)
+sky_horizon_color = Color(0.65, 0.8, 0.95, 1)
+ground_bottom_color = Color(0.1, 0.15, 0.22, 1)
+ground_horizon_color = Color(0.6, 0.75, 0.88, 1)
+
+[sub_resource type="Sky" id="Sky_lake"]
+sky_material = SubResource("ProceduralSkyMaterial_lake")
+
+[sub_resource type="Environment" id="Environment_lake"]
+background_mode = 2
+sky = SubResource("Sky_lake")
+ambient_light_source = 2
+ambient_light_color = Color(0.75, 0.88, 0.98, 1)
+ambient_light_energy = 0.5
+tonemap_mode = 2
+ssao_enabled = true
+glow_enabled = true
+glow_intensity = 0.45
+
+[sub_resource type="StandardMaterial3D" id="Mat_GlacialWater"]
+albedo_color = Color(0.08, 0.35, 0.55, 0.88)
+metallic = 0.4
+roughness = 0.08
+
+[sub_resource type="PlaneMesh" id="PlaneMesh_WaterSurface"]
+material = SubResource("Mat_GlacialWater")
+size = Vector2(240, 240)
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_WaterFloor"]
+size = Vector3(240, 0.5, 240)
+
+[sub_resource type="StandardMaterial3D" id="Mat_CliffRock"]
+albedo_color = Color(0.38, 0.36, 0.35, 1)
+roughness = 0.9
+
+[sub_resource type="CylinderMesh" id="CylinderMesh_Island"]
+material = SubResource("Mat_CliffRock")
+top_radius = 6.0
+bottom_radius = 9.0
+height = 2.0
+
+[sub_resource type="CylinderShape3D" id="CylinderShape3D_Island"]
+height = 2.0
+radius = 6.0
+
+[sub_resource type="StandardMaterial3D" id="Mat_IslandPad"]
+albedo_color = Color(0.25, 0.28, 0.3, 1)
+roughness = 0.65
+
+[sub_resource type="CylinderMesh" id="CylinderMesh_IslandPad"]
+material = SubResource("Mat_IslandPad")
+top_radius = 2.6
+bottom_radius = 2.6
+height = 0.1
+
+[sub_resource type="StandardMaterial3D" id="Mat_PadYellow"]
+albedo_color = Color(0.95, 0.85, 0.1, 1)
+emission_enabled = true
+emission = Color(0.95, 0.85, 0.1, 1)
+emission_energy_multiplier = 0.8
+
+[sub_resource type="TorusMesh" id="TorusMesh_IslandPadRing"]
+material = SubResource("Mat_PadYellow")
+inner_radius = 2.2
+outer_radius = 2.45
+
+[sub_resource type="PrismMesh" id="PrismMesh_MountainPeak"]
+material = SubResource("Mat_CliffRock")
+left_to_right = 0.5
+size = Vector3(45, 35, 30)
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_Mountain"]
+size = Vector3(45, 35, 30)
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_PerimeterCliff"]
+size = Vector3(240, 40, 1)
+
+[node name="MountainLake" type="Node3D"]
+script = ExtResource("1_world")
+
+[node name="WorldEnvironment" type="WorldEnvironment" parent="."]
+environment = SubResource("Environment_lake")
+
+[node name="DirectionalLight3D" type="DirectionalLight3D" parent="."]
+transform = Transform3D(0.866025, -0.25, 0.433013, 0, 0.866025, 0.5, -0.5, -0.433013, 0.75, 0, 50, 0)
+shadow_enabled = true
+
+[node name="InputRouter" type="Node" parent="."]
+script = ExtResource("2_input")
+
+[node name="MissionManager" type="Node" parent="."]
+script = ExtResource("6_missions")
+
+[node name="Quadcopter" parent="." node_paths=PackedStringArray("input_router") instance=ExtResource("3_drone")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 2.1, 0)
+input_router = NodePath("../InputRouter")
+
+[node name="CameraDirector" type="Node3D" parent="." node_paths=PackedStringArray("target_drone", "chase_camera", "fpv_camera")]
+script = ExtResource("4_cam_director")
+target_drone = NodePath("../Quadcopter")
+chase_camera = NodePath("ChaseCamera")
+fpv_camera = NodePath("../Quadcopter/DroneRig/Fuselage/GimbalMount/GimbalPitch/FPVCamera")
+
+[node name="ChaseCamera" type="Camera3D" parent="CameraDirector"]
+transform = Transform3D(1, 0, 0, 0, 0.965926, 0.258819, 0, -0.258819, 0.965926, 0, 3.4, 3.4)
+current = true
+fov = 75.0
+
+[node name="FlightHUD" parent="." node_paths=PackedStringArray("input_router", "flight_physics", "camera_director") instance=ExtResource("5_hud")]
+input_router = NodePath("../InputRouter")
+flight_physics = NodePath("../Quadcopter")
+camera_director = NodePath("../CameraDirector")
+
+[node name="MissionOverlay" parent="FlightHUD" instance=ExtResource("9_overlay")]
+
+[node name="MissionResults" parent="FlightHUD" instance=ExtResource("10_results")]
+
+[node name="PauseMenu" parent="FlightHUD" instance=ExtResource("11_pause")]
+
+[node name="WorldSelectMenu" parent="FlightHUD" instance=ExtResource("12_wselect")]
+
+[node name="EnvironmentGeometry" type="Node3D" parent="."]
+
+[node name="WaterStatic" type="StaticBody3D" parent="EnvironmentGeometry"]
+
+[node name="WaterMesh" type="MeshInstance3D" parent="EnvironmentGeometry/WaterStatic"]
+mesh = SubResource("PlaneMesh_WaterSurface")
+
+[node name="WaterCollision" type="CollisionShape3D" parent="EnvironmentGeometry/WaterStatic"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.25, 0)
+shape = SubResource("BoxShape3D_WaterFloor")
+
+[node name="CentralIsland" type="StaticBody3D" parent="EnvironmentGeometry"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1, 0)
+
+[node name="IslandMesh" type="MeshInstance3D" parent="EnvironmentGeometry/CentralIsland"]
+mesh = SubResource("CylinderMesh_Island")
+
+[node name="IslandCollision" type="CollisionShape3D" parent="EnvironmentGeometry/CentralIsland"]
+shape = SubResource("CylinderShape3D_Island")
+
+[node name="Pad" type="Node3D" parent="EnvironmentGeometry/CentralIsland"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.05, 0)
+
+[node name="PadMesh" type="MeshInstance3D" parent="EnvironmentGeometry/CentralIsland/Pad"]
+mesh = SubResource("CylinderMesh_IslandPad")
+
+[node name="PadRing" type="MeshInstance3D" parent="EnvironmentGeometry/CentralIsland/Pad"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.05, 0)
+mesh = SubResource("TorusMesh_IslandPadRing")
+
+[node name="Mountains" type="Node3D" parent="EnvironmentGeometry"]
+
+[node name="Peak_North" type="StaticBody3D" parent="EnvironmentGeometry/Mountains"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 15, -60)
+
+[node name="Mesh" type="MeshInstance3D" parent="EnvironmentGeometry/Mountains/Peak_North"]
+mesh = SubResource("PrismMesh_MountainPeak")
+
+[node name="Coll" type="CollisionShape3D" parent="EnvironmentGeometry/Mountains/Peak_North"]
+shape = SubResource("BoxShape3D_Mountain")
+
+[node name="Peak_East" type="StaticBody3D" parent="EnvironmentGeometry/Mountains"]
+transform = Transform3D(0.707107, 0, 0.707107, 0, 1, 0, -0.707107, 0, 0.707107, 60, 18, 0)
+
+[node name="Mesh" type="MeshInstance3D" parent="EnvironmentGeometry/Mountains/Peak_East"]
+mesh = SubResource("PrismMesh_MountainPeak")
+
+[node name="Coll" type="CollisionShape3D" parent="EnvironmentGeometry/Mountains/Peak_East"]
+shape = SubResource("BoxShape3D_Mountain")
+
+[node name="Peak_West" type="StaticBody3D" parent="EnvironmentGeometry/Mountains"]
+transform = Transform3D(0.707107, 0, -0.707107, 0, 1, 0, 0.707107, 0, 0.707107, -60, 18, 0)
+
+[node name="Mesh" type="MeshInstance3D" parent="EnvironmentGeometry/Mountains/Peak_West"]
+mesh = SubResource("PrismMesh_MountainPeak")
+
+[node name="Coll" type="CollisionShape3D" parent="EnvironmentGeometry/Mountains/Peak_West"]
+shape = SubResource("BoxShape3D_Mountain")
+
+[node name="FlightGates" type="Node3D" parent="EnvironmentGeometry"]
+
+[node name="Gate_0" parent="EnvironmentGeometry/FlightGates" instance=ExtResource("7_gate")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 6, -18)
+
+[node name="Gate_1" parent="EnvironmentGeometry/FlightGates" instance=ExtResource("7_gate")]
+transform = Transform3D(0.707107, 0, -0.707107, 0, 1, 0, 0.707107, 0, 0.707107, 28, 12, -35)
+
+[node name="Gate_2" parent="EnvironmentGeometry/FlightGates" instance=ExtResource("7_gate")]
+transform = Transform3D(-1, 0, -8.74228e-08, 0, 1, 0, 8.74228e-08, 0, -1, 0, 22, -65)
+
+[node name="Gate_3" parent="EnvironmentGeometry/FlightGates" instance=ExtResource("7_gate")]
+transform = Transform3D(0.707107, 0, 0.707107, 0, 1, 0, -0.707107, 0, 0.707107, -28, 10, -35)
+
+[node name="CollectibleCoins" type="Node3D" parent="EnvironmentGeometry"]
+
+[node name="Coin_1" parent="EnvironmentGeometry/CollectibleCoins" instance=ExtResource("8_coin")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.2, -8)
+
+[node name="Coin_2" parent="EnvironmentGeometry/CollectibleCoins" instance=ExtResource("8_coin")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 15, 1.4, -22)
+
+[node name="Coin_3" parent="EnvironmentGeometry/CollectibleCoins" instance=ExtResource("8_coin")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 28, 15, -45)
+
+[node name="Coin_4" parent="EnvironmentGeometry/CollectibleCoins" instance=ExtResource("8_coin")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -28, 15, -45)
+
+[node name="Coin_5" parent="EnvironmentGeometry/CollectibleCoins" instance=ExtResource("8_coin")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -15, 1.4, -22)
+
+[node name="Coin_6" parent="EnvironmentGeometry/CollectibleCoins" instance=ExtResource("8_coin")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.2, 8)
+
+[node name="BoundaryWalls" type="Node3D" parent="EnvironmentGeometry"]
+
+[node name="Wall_North" type="StaticBody3D" parent="EnvironmentGeometry/BoundaryWalls"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 20, -120)
+
+[node name="Collision" type="CollisionShape3D" parent="EnvironmentGeometry/BoundaryWalls/Wall_North"]
+shape = SubResource("BoxShape3D_PerimeterCliff")
+
+[node name="Wall_South" type="StaticBody3D" parent="EnvironmentGeometry/BoundaryWalls"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 20, 120)
+
+[node name="Collision" type="CollisionShape3D" parent="EnvironmentGeometry/BoundaryWalls/Wall_South"]
+shape = SubResource("BoxShape3D_PerimeterCliff")
+
+[node name="Wall_East" type="StaticBody3D" parent="EnvironmentGeometry/BoundaryWalls"]
+transform = Transform3D(-4.37114e-08, 0, 1, 0, 1, 0, -1, 0, -4.37114e-08, 120, 20, 0)
+
+[node name="Collision" type="CollisionShape3D" parent="EnvironmentGeometry/BoundaryWalls/Wall_East"]
+shape = SubResource("BoxShape3D_PerimeterCliff")
+
+[node name="Wall_West" type="StaticBody3D" parent="EnvironmentGeometry/BoundaryWalls"]
+transform = Transform3D(-4.37114e-08, 0, 1, 0, 1, 0, -1, 0, -4.37114e-08, -120, 20, 0)
+
+[node name="Collision" type="CollisionShape3D" parent="EnvironmentGeometry/BoundaryWalls/Wall_West"]
+shape = SubResource("BoxShape3D_PerimeterCliff")

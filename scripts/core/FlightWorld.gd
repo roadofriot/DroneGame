@@ -10,6 +10,7 @@ extends Node3D
 @onready var mission_overlay: MissionOverlay = $FlightHUD/MissionOverlay
 @onready var mission_results: MissionResults = $FlightHUD/MissionResults
 @onready var pause_menu: PauseMenu = $FlightHUD/PauseMenu
+@onready var world_select_menu: WorldSelectMenu = get_node_or_null("FlightHUD/WorldSelectMenu")
 
 @onready var gates_container: Node3D = $EnvironmentGeometry/FlightGates
 @onready var coins_container: Node3D = $EnvironmentGeometry/CollectibleCoins
@@ -49,6 +50,13 @@ func _ready() -> void:
 	if pause_menu:
 		if not pause_menu.restart_requested.is_connected(_on_pause_restart):
 			pause_menu.restart_requested.connect(_on_pause_restart)
+
+	# Connect World Selection Menu
+	if flight_hud and world_select_menu:
+		if not flight_hud.world_select_requested.is_connected(world_select_menu.show_menu):
+			flight_hud.world_select_requested.connect(world_select_menu.show_menu)
+		if not world_select_menu.world_selected.is_connected(_on_world_selected):
+			world_select_menu.world_selected.connect(_on_world_selected)
 
 	# Start default tutorial mission
 	if mission_manager:
@@ -102,3 +110,10 @@ func _on_pause_restart() -> void:
 		quadcopter.reset_to_pad()
 	if mission_manager and not mission_manager.active_mission_id.is_empty():
 		mission_manager.start_mission(mission_manager.active_mission_id)
+
+func _on_world_selected(world_id: String) -> void:
+	var def = WorldData.get_world_by_id(world_id)
+	if not def.is_empty() and def.has("scene_path"):
+		var target_scene = def["scene_path"]
+		if ResourceLoader.exists(target_scene):
+			get_tree().change_scene_to_file(target_scene)
