@@ -47,6 +47,7 @@
       "max_horizontal_speed_mps": 25.0,
       "auto_level_strength": 4.5,
       "altitude_hold": false,
+      "stunts_enabled": true,
       "expo": 0.2,
       "description": "High agility, steep banking, and high top speed for experienced pilots."
     },

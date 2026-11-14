@@ -60,6 +60,11 @@ func can_perform_stunt(drone: FlightPhysics) -> Dictionary:
 
 	return {"allowed": true, "reason": "Ready"}
 
+func execute_stunt(stunt_type: String, drone: FlightPhysics = null) -> bool:
+	if drone == null:
+		drone = target_drone if target_drone else get_parent() as FlightPhysics
+	return trigger_stunt(stunt_type, drone)
+
 func trigger_stunt(stunt_type: String, drone: FlightPhysics) -> bool:
 	var check = can_perform_stunt(drone)
 	if not check.get("allowed", false):
@@ -102,9 +107,10 @@ func process_stunt_physics(delta: float, drone: FlightPhysics) -> void:
 
 	elif stunt_timer < 0.52:
 		stunt_phase = StuntState.ROTATING
-		var cur_basis = drone.global_transform.basis if drone.is_inside_tree() else drone.transform.basis
+		var cur_basis = drone.global_transform.basis.orthonormalized() if (drone.is_inside_tree() and drone.is_node_ready()) else drone.transform.basis.orthonormalized()
 		var is_inverted: bool = cur_basis.y.y < 0.0
 		var mid_thrust = 0.15 if is_inverted else (hover_thrust * 0.7)
+		var rot_w: float = 15.5 # rad/s for crisp 360 degree maneuver
 
 		match current_stunt:
 			"front_flip":
@@ -113,34 +119,47 @@ func process_stunt_physics(delta: float, drone: FlightPhysics) -> void:
 				drone.target_motor_rpms[1] = clampf(mid_thrust - 0.5, 0.0, 1.0)
 				drone.target_motor_rpms[2] = clampf(mid_thrust + 0.55, 0.0, 1.0)
 				drone.target_motor_rpms[3] = clampf(mid_thrust + 0.55, 0.0, 1.0)
+				drone.angular_velocity = cur_basis * Vector3(-rot_w, 0.0, 0.0)
 			"back_flip":
 				# Nose up: Boost front (0, 1), Cut rear (2, 3)
 				drone.target_motor_rpms[0] = clampf(mid_thrust + 0.55, 0.0, 1.0)
 				drone.target_motor_rpms[1] = clampf(mid_thrust + 0.55, 0.0, 1.0)
 				drone.target_motor_rpms[2] = clampf(mid_thrust - 0.5, 0.0, 1.0)
 				drone.target_motor_rpms[3] = clampf(mid_thrust - 0.5, 0.0, 1.0)
-			"roll_left":
+				drone.angular_velocity = cur_basis * Vector3(rot_w, 0.0, 0.0)
+			"roll_left", "barrel_roll_left":
 				# Roll left: Boost right (1, 3), Cut left (0, 2)
 				drone.target_motor_rpms[0] = clampf(mid_thrust - 0.5, 0.0, 1.0)
 				drone.target_motor_rpms[1] = clampf(mid_thrust + 0.55, 0.0, 1.0)
 				drone.target_motor_rpms[2] = clampf(mid_thrust - 0.5, 0.0, 1.0)
 				drone.target_motor_rpms[3] = clampf(mid_thrust + 0.55, 0.0, 1.0)
-			"roll_right":
+				drone.angular_velocity = cur_basis * Vector3(0.0, 0.0, rot_w)
+			"roll_right", "barrel_roll_right":
 				# Roll right: Boost left (0, 2), Cut right (1, 3)
 				drone.target_motor_rpms[0] = clampf(mid_thrust + 0.55, 0.0, 1.0)
 				drone.target_motor_rpms[1] = clampf(mid_thrust - 0.5, 0.0, 1.0)
 				drone.target_motor_rpms[2] = clampf(mid_thrust + 0.55, 0.0, 1.0)
 				drone.target_motor_rpms[3] = clampf(mid_thrust - 0.5, 0.0, 1.0)
+				drone.angular_velocity = cur_basis * Vector3(0.0, 0.0, -rot_w)
+			"yaw_spin_360", "spin_360":
+				# 360 Yaw Rotation: Boost CW (0, 3), cut CCW (1, 2)
+				drone.target_motor_rpms[0] = clampf(mid_thrust + 0.55, 0.0, 1.0)
+				drone.target_motor_rpms[1] = clampf(mid_thrust - 0.45, 0.0, 1.0)
+				drone.target_motor_rpms[2] = clampf(mid_thrust - 0.45, 0.0, 1.0)
+				drone.target_motor_rpms[3] = clampf(mid_thrust + 0.55, 0.0, 1.0)
+				drone.angular_velocity = cur_basis * Vector3(0.0, rot_w, 0.0)
 			_:
 				# Default front flip fallback
 				drone.target_motor_rpms[0] = clampf(mid_thrust - 0.5, 0.0, 1.0)
 				drone.target_motor_rpms[1] = clampf(mid_thrust - 0.5, 0.0, 1.0)
 				drone.target_motor_rpms[2] = clampf(mid_thrust + 0.55, 0.0, 1.0)
 				drone.target_motor_rpms[3] = clampf(mid_thrust + 0.55, 0.0, 1.0)
+				drone.angular_velocity = cur_basis * Vector3(-rot_w, 0.0, 0.0)
 
 	else:
 		stunt_phase = StuntState.RECOVERY
 		# Auto-level brake catch targeting level attitude (0 deg pitch, 0 deg roll)
+		drone.angular_velocity = drone.angular_velocity.move_toward(Vector3.ZERO, delta * 35.0)
 		drone._calculate_auto_level_rpms(hover_thrust, 0.0, 0.0, 0.0, delta)
 
 	# Check maneuver completion

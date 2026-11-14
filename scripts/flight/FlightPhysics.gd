@@ -1,16 +1,31 @@
 class_name FlightPhysics
 extends RigidBody3D
 
-## FlightPhysics: Deterministic 60Hz quadcopter flight simulation.
-## Implements 4-motor thrust dynamics, auto-level PID, ground effect, and battery consumption.
+## FlightPhysics: Professional 60Hz Quadcopter Flight Simulation & State Machine.
+## Implements 4-motor thrust dynamics, auto-level PID, ground effect, battery consumption,
+## automated Take-Off sequence, Landing, Return-To-Home (RTH), and 5 distinct flight modes.
 
 signal telemetry_updated(data: Dictionary)
 signal flight_mode_changed(mode_name: String)
 signal drone_state_changed(state_name: String)
 signal drone_crashed(impact_force: float)
 signal landing_completed
+signal takeoff_completed
+signal preflight_failed(reason: String)
+signal rth_state_changed(is_active: bool, distance: float)
+signal flight_boundary_reached(boundary_type: String)
 
-enum DroneState { DISARMED, TAKING_OFF, FLYING, LANDING, CRASHED }
+enum DroneState {
+	DISARMED,
+	PREFLIGHT_CHECK,
+	MOTOR_STARTING,
+	TAKEOFF,
+	HOVER,
+	FLYING,
+	LANDING,
+	RTH,
+	CRASHED
+}
 
 @export var input_router: InputRouter
 @export var raycast_ground: RayCast3D
@@ -18,8 +33,9 @@ enum DroneState { DISARMED, TAKING_OFF, FLYING, LANDING, CRASHED }
 
 # Physical Constants
 @export var drone_mass: float = 1.25
+@export var arm_length: float = 0.22 # Motor arm moment length in meters
 @export var max_thrust_per_motor: float = 7.0 # 4 * 7 = 28 N (TWR ~ 2.28)
-@export var motor_spool_speed: float = 12.0 # Spool response factor
+@export var motor_spool_speed: float = 14.0 # Spool response factor
 @export var linear_drag: float = 0.55
 @export var angular_drag: float = 5.0
 @export var ground_effect_dist: float = 1.5
@@ -49,11 +65,18 @@ var climb_rate: float = 0.0
 var heading_deg: float = 0.0
 var pitch_deg: float = 0.0
 var roll_deg: float = 0.0
+var total_flight_time: float = 0.0
 
-# Auto-Takeoff / Land Automation
-var auto_target_altitude: float = 1.8
-var auto_timer: float = 0.0
+# Takeoff & Hover Automation (Configurable default 3.0m)
+@export var auto_target_altitude: float = 3.0
+@export var max_flight_altitude: float = 60.0 # meters AGL ceiling
+@export var max_horizontal_range: float = 250.0 # meters horizontal boundary from pad
+var state_timer: float = 0.0
 var spawn_transform: Transform3D
+
+# RTH State
+var rth_phase: int = 0 # 0: Ascend, 1: Cruise, 2: Land
+var rth_clearance_altitude: float = 5.0
 
 # PID Controllers for Auto-Level
 var pitch_pid_p: float = 6.0
@@ -93,7 +116,6 @@ func _ready() -> void:
 	body_entered.connect(_on_body_entered)
 
 func _load_profiles() -> void:
-	# Default baseline for all 5 modes
 	all_profiles = {
 		"cine": {
 			"name": "Cinematic",
@@ -123,6 +145,7 @@ func _load_profiles() -> void:
 			"max_yaw_rate_deg": 220.0,
 			"auto_level_strength": 4.5,
 			"altitude_hold": false,
+			"stunts_enabled": true,
 			"expo": 0.2
 		},
 		"arcade": {
@@ -161,8 +184,6 @@ func _load_profiles() -> void:
 					all_profiles[k] = data["profiles"][k]
 
 func set_flight_profile(profile_name: String) -> void:
-	if all_profiles.is_empty():
-		_load_profiles()
 	if all_profiles.has(profile_name):
 		active_profile_name = profile_name
 		active_profile = all_profiles[profile_name]
@@ -170,30 +191,46 @@ func set_flight_profile(profile_name: String) -> void:
 		roll_pid_p = pitch_pid_p
 		flight_mode_changed.emit(active_profile.get("name", profile_name.capitalize()))
 
+# --- Physics Process Loop (Fixed 60Hz Timestep) ---
+
 func _physics_process(delta: float) -> void:
-	# Clamp delta to prevent integration explosion on hitch / startup
 	var safe_delta = clampf(delta, 0.001, 0.033)
 
-	# Guard against runaway physics or NaN
+	# Guard against numerical instability
 	if not linear_velocity.is_finite() or linear_velocity.length_squared() > 40000.0:
 		linear_velocity = Vector3.ZERO
 	if not angular_velocity.is_finite() or angular_velocity.length_squared() > 10000.0:
 		angular_velocity = Vector3.ZERO
-	if not global_position.is_finite():
-		global_position = Vector3(0.0, 0.2, 0.0)
+	var cur_p = global_position if is_inside_tree() else position
+	if not cur_p.is_finite():
+		if is_inside_tree():
+			global_position = spawn_transform.origin + Vector3(0.0, 0.2, 0.0)
+		else:
+			position = spawn_transform.origin + Vector3(0.0, 0.2, 0.0)
 
 	_update_telemetry()
 	_update_battery(safe_delta)
 
+	if current_state != DroneState.DISARMED and current_state != DroneState.CRASHED:
+		total_flight_time += safe_delta
+
 	match current_state:
 		DroneState.DISARMED:
 			_process_disarmed(safe_delta)
-		DroneState.TAKING_OFF:
+		DroneState.PREFLIGHT_CHECK:
+			_process_preflight_check(safe_delta)
+		DroneState.MOTOR_STARTING:
+			_process_motor_starting(safe_delta)
+		DroneState.TAKEOFF:
 			_process_taking_off(safe_delta)
+		DroneState.HOVER:
+			_process_hover(safe_delta)
 		DroneState.FLYING:
 			_process_flying(safe_delta)
 		DroneState.LANDING:
 			_process_landing(safe_delta)
+		DroneState.RTH:
+			_process_rth(safe_delta)
 		DroneState.CRASHED:
 			_process_crashed(safe_delta)
 
@@ -201,14 +238,18 @@ func _physics_process(delta: float) -> void:
 	_emit_telemetry()
 
 func _update_telemetry() -> void:
-	var cur_trans = global_transform if is_inside_tree() else transform
-	if not cur_trans.is_finite():
-		return
-	altitude_msl = global_position.y if is_inside_tree() else position.y
+	var use_global = is_inside_tree() and is_node_ready() and get_viewport() != null
+	var cur_trans = global_transform if use_global else transform
+	var cur_y = global_position.y if use_global else position.y
+	if cur_y == 0.0 and position.y != 0.0:
+		cur_y = position.y
+	altitude_msl = cur_y
+
 	if raycast_ground and raycast_ground.is_inside_tree() and raycast_ground.is_colliding():
 		var col_pt = raycast_ground.get_collision_point()
 		if col_pt.is_finite():
 			altitude_agl = maxf(0.0, altitude_msl - col_pt.y)
+			# print("DBG: col_pt=", col_pt, " msl=", altitude_msl, " agl=", altitude_agl)
 		else:
 			altitude_agl = maxf(0.0, altitude_msl)
 	else:
@@ -218,12 +259,12 @@ func _update_telemetry() -> void:
 	ground_speed = horizontal_vel.length()
 	climb_rate = linear_velocity.y
 
-	# Calculate pitch and roll angles in degrees
+	# Calculate pitch and roll angles in degrees (Forward tilt / Bank right are positive)
 	var forward = -cur_trans.basis.z
 	var right = cur_trans.basis.x
 
-	pitch_deg = rad_to_deg(asin(clampf(forward.y, -1.0, 1.0)))
-	roll_deg = rad_to_deg(asin(clampf(right.y, -1.0, 1.0)))
+	pitch_deg = -rad_to_deg(asin(clampf(forward.y, -1.0, 1.0)))
+	roll_deg = -rad_to_deg(asin(clampf(right.y, -1.0, 1.0)))
 
 	# Compass heading (0..360 where 0 = North / -Z axis)
 	var forward_flat = Vector2(-forward.x, -forward.z)
@@ -235,8 +276,8 @@ func _update_battery(delta: float) -> void:
 	if battery_remaining_mah <= 0.0:
 		battery_remaining_mah = 0.0
 		battery_percent = 0.0
-		if current_state == DroneState.FLYING:
-			current_state = DroneState.LANDING
+		if current_state == DroneState.FLYING or current_state == DroneState.HOVER:
+			land()
 		return
 
 	var total_motor_load: float = 0.0
@@ -253,24 +294,76 @@ func _update_battery(delta: float) -> void:
 	battery_percent = (battery_remaining_mah / battery_capacity_mah) * 100.0
 	battery_voltage = 13.6 + (battery_percent / 100.0) * 3.2
 
-func _process_disarmed(delta: float) -> void:
+# --- State Process Handlers ---
+
+func _process_disarmed(_delta: float) -> void:
 	for i in range(4):
 		target_motor_rpms[i] = 0.0
 
+func _process_preflight_check(delta: float) -> void:
+	state_timer += delta
+	if state_timer >= 0.2:
+		var err = _perform_preflight_check()
+		if not err.is_empty():
+			current_state = DroneState.DISARMED
+			preflight_failed.emit(err)
+			drone_state_changed.emit("DISARMED")
+			print("[VALIDATION] PREFLIGHT_FAILED: %s" % err)
+			return
+
+		current_state = DroneState.MOTOR_STARTING
+		state_timer = 0.0
+		drone_state_changed.emit("MOTOR_STARTING")
+		print("[VALIDATION] PREFLIGHT_PASSED")
+		print("[MOTORS] STARTING")
+
+func _process_motor_starting(delta: float) -> void:
+	state_timer += delta
+	# Gradual idle spool-up to 25% RPM
+	for i in range(4):
+		target_motor_rpms[i] = 0.25
+
+	if state_timer >= 0.5:
+		current_state = DroneState.TAKEOFF
+		state_timer = 0.0
+		drone_state_changed.emit("TAKEOFF")
+		print("[FLIGHT] TAKEOFF_STARTED")
+
 func _process_taking_off(delta: float) -> void:
-	# Automated liftoff sequence to auto_target_altitude
+	# Vertical ascent towards configured auto_target_altitude (3.0m)
 	var alt_error = auto_target_altitude - altitude_agl
 	if alt_error <= 0.15:
-		current_state = DroneState.FLYING
-		drone_state_changed.emit("FLYING")
+		current_state = DroneState.HOVER
+		state_timer = 0.0
+		drone_state_changed.emit("HOVER")
+		takeoff_completed.emit()
+		print("[FLIGHT] HOVER_REACHED — Altitude stabilized at %.2fm" % altitude_agl)
 		return
 
 	# Upward thrust
 	var hover_thrust = (drone_mass * 9.8) / (4.0 * max_thrust_per_motor)
-	var climb_thrust = clampf(hover_thrust + (alt_error * 0.15), 0.0, 0.95)
-
-	# Keep level during takeoff
+	var climb_thrust = clampf(hover_thrust + (alt_error * 0.20), 0.0, 0.95)
 	_calculate_auto_level_rpms(climb_thrust, 0.0, 0.0, 0.0, delta)
+
+func _process_hover(delta: float) -> void:
+	var in_throttle = input_router.throttle if input_router else 0.0
+	var in_pitch = input_router.pitch if input_router else 0.0
+	var in_roll = input_router.roll if input_router else 0.0
+	var in_yaw = input_router.yaw if input_router else 0.0
+
+	# When pilot touches or moves joysticks, transition seamlessly to manual flight
+	if abs(in_throttle) > 0.08 or abs(in_pitch) > 0.08 or abs(in_roll) > 0.08 or abs(in_yaw) > 0.08:
+		current_state = DroneState.FLYING
+		drone_state_changed.emit("FLYING")
+		print("[FLIGHT] MANUAL_CONTROL_ENABLED")
+		_process_flying(delta)
+		return
+
+	# Maintain stable hover via Altitude Hold PID
+	var alt_error = auto_target_altitude - altitude_agl
+	var hover_thrust = (drone_mass * 9.8) / (4.0 * max_thrust_per_motor)
+	var hold_thrust = clampf(hover_thrust + (alt_error * 0.18) - (linear_velocity.y * 0.12), 0.15, 0.90)
+	_calculate_auto_level_rpms(hold_thrust, 0.0, 0.0, 0.0, delta)
 
 func _process_flying(delta: float) -> void:
 	if stunt_engine and stunt_engine.is_performing_stunt():
@@ -281,6 +374,23 @@ func _process_flying(delta: float) -> void:
 	var in_yaw = input_router.yaw if input_router else 0.0
 	var in_pitch = input_router.pitch if input_router else 0.0
 	var in_roll = input_router.roll if input_router else 0.0
+
+	# Enforce Flight Boundaries (Ceiling and Horizontal Geofence)
+	if altitude_agl >= max_flight_altitude:
+		if in_throttle > 0.0:
+			in_throttle = 0.0
+		flight_boundary_reached.emit("MAX_ALTITUDE")
+
+	var dist_home = get_home_distance()
+	if dist_home >= max_horizontal_range:
+		var home_flat = Vector2(spawn_transform.origin.x, spawn_transform.origin.z)
+		var cur_pos = global_position if is_inside_tree() else position
+		var cur_flat = Vector2(cur_pos.x, cur_pos.z)
+		var to_home_2d = (home_flat - cur_flat).normalized()
+		var breach_depth = dist_home - max_horizontal_range
+		var push_force = Vector3(to_home_2d.x, 0.0, to_home_2d.y) * clampf(breach_depth * 8.0, 4.0, 25.0)
+		apply_central_force(push_force)
+		flight_boundary_reached.emit("GEOFENCE_RADIUS")
 
 	var hover_thrust = (drone_mass * 9.8) / (4.0 * max_thrust_per_motor)
 	var base_thrust = hover_thrust + (in_throttle * 0.45)
@@ -298,49 +408,248 @@ func _process_flying(delta: float) -> void:
 
 		_calculate_auto_level_rpms(base_thrust, target_pitch, target_roll, target_yaw_rate, delta)
 
+	# --- True 3D Physical Translation & Aerodynamic Propulsion ---
+	var cur_basis = global_transform.basis.orthonormalized() if (is_inside_tree() and is_node_ready()) else transform.basis.orthonormalized()
+	var forward_flat = -Vector3(cur_basis.z.x, 0.0, cur_basis.z.z)
+	if forward_flat.length_squared() > 0.0001:
+		forward_flat = forward_flat.normalized()
+	else:
+		forward_flat = Vector3(0.0, 0.0, -1.0)
+
+	var right_flat = Vector3(cur_basis.x.x, 0.0, cur_basis.x.z)
+	if right_flat.length_squared() > 0.0001:
+		right_flat = right_flat.normalized()
+	else:
+		right_flat = Vector3(1.0, 0.0, 0.0)
+
+	var max_h_speed = active_profile.get("max_horizontal_speed_mps", 14.0)
+	var cur_h_vel = Vector3(linear_velocity.x, 0.0, linear_velocity.z)
+
+	if abs(in_pitch) > 0.03 or abs(in_roll) > 0.03:
+		# Pilot commanding horizontal translation
+		var target_h_vel = (forward_flat * in_pitch + right_flat * in_roll) * max_h_speed
+		var h_force = (target_h_vel - cur_h_vel) * 3.8 * drone_mass
+		if h_force.is_finite():
+			apply_central_force(h_force)
+	else:
+		# Active horizontal braking to maintain rock-solid hover
+		if cur_h_vel.length() > 0.02:
+			var brake_force = -cur_h_vel * 3.2 * drone_mass
+			if brake_force.is_finite():
+				apply_central_force(brake_force)
+
+	# Direct yaw angular response
+	if abs(in_yaw) > 0.03:
+		var max_yaw_rate_rad = deg_to_rad(active_profile.get("max_yaw_rate_deg", 120.0))
+		var target_yaw_w = in_yaw * max_yaw_rate_rad
+		var cur_yaw_w = angular_velocity.y
+		var yaw_torque_impulse = (target_yaw_w - cur_yaw_w) * 3.5 * (drone_mass * 0.045)
+		apply_torque(Vector3(0.0, yaw_torque_impulse, 0.0))
+
 func _process_landing(delta: float) -> void:
-	var target_descent = -0.7 # m/s
+	# 1. Active horizontal braking
+	var h_vel = Vector3(linear_velocity.x, 0.0, linear_velocity.z)
+	if h_vel.length() > 0.05:
+		apply_central_force(-h_vel.normalized() * minf(h_vel.length() * 4.0, 10.0))
+
+	# 2. Controlled vertical descent (-0.65 m/s)
+	var target_descent = -0.65
 	var vel_error = target_descent - linear_velocity.y
 	var hover_thrust = (drone_mass * 9.8) / (4.0 * max_thrust_per_motor)
-	var descent_thrust = clampf(hover_thrust + (vel_error * 0.08), 0.15, 0.75)
-
+	var descent_thrust = clampf(hover_thrust + (vel_error * 0.12), 0.15, 0.70)
 	_calculate_auto_level_rpms(descent_thrust, 0.0, 0.0, 0.0, delta)
 
-	if altitude_agl < 0.12 and abs(linear_velocity.y) < 0.2:
-		current_state = DroneState.DISARMED
-		drone_state_changed.emit("DISARMED")
-		landing_completed.emit()
+	# 3. Touchdown confirmation
+	if altitude_agl < 0.16 and abs(linear_velocity.y) < 0.35:
+		state_timer += delta
+		if state_timer >= 0.25:
+			current_state = DroneState.DISARMED
+			for i in range(4):
+				target_motor_rpms[i] = 0.0
+				motor_rpms[i] = 0.0
+			drone_state_changed.emit("DISARMED")
+			landing_completed.emit()
+			print("[FLIGHT] LANDING_CONFIRMED — MOTORS_STOPPED")
 
-func _process_crashed(delta: float) -> void:
+func _process_rth(delta: float) -> void:
+	# Cancel RTH if user moves pitch/roll joystick manually
+	var in_pitch = input_router.pitch if input_router else 0.0
+	var in_roll = input_router.roll if input_router else 0.0
+	if abs(in_pitch) > 0.25 or abs(in_roll) > 0.25:
+		cancel_rth()
+		_process_flying(delta)
+		return
+
+	var home_pos = spawn_transform.origin
+	var cur_pos = global_position if is_inside_tree() else position
+	var to_home = home_pos - cur_pos
+	to_home.y = 0.0
+	var dist_home = to_home.length()
+
+	match rth_phase:
+		0:
+			# Phase 0: Ascend to safety clearance altitude
+			var alt_err = rth_clearance_altitude - altitude_agl
+			if alt_err <= 0.25:
+				rth_phase = 1
+				print("[FLIGHT] RTH_CRUISE_STARTED — Distance: %.1f m" % dist_home)
+				return
+			var hover_thrust = (drone_mass * 9.8) / (4.0 * max_thrust_per_motor)
+			var climb_thrust = clampf(hover_thrust + (alt_err * 0.18), 0.2, 0.85)
+			_calculate_auto_level_rpms(climb_thrust, 0.0, 0.0, 0.0, delta)
+
+		1:
+			# Phase 1: Cruise toward home pad
+			if dist_home <= 1.2:
+				rth_phase = 2
+				print("[FLIGHT] RTH_ARRIVED_OVER_HOME — Initiating Autoland")
+				land()
+				return
+
+			var dir_home = to_home.normalized()
+			# Pitch forward towards home
+			var target_pitch_angle = 12.0
+			var target_yaw_angle = rad_to_deg(atan2(-dir_home.x, -dir_home.z))
+			var yaw_err = wrapf(target_yaw_angle - heading_deg, -180.0, 180.0)
+			var yaw_rate = deg_to_rad(clampf(yaw_err * 2.5, -90.0, 90.0))
+
+			# Maintain altitude
+			var alt_err = rth_clearance_altitude - altitude_agl
+			var hover_thrust = (drone_mass * 9.8) / (4.0 * max_thrust_per_motor)
+			var hold_thrust = clampf(hover_thrust + (alt_err * 0.14) - (linear_velocity.y * 0.1), 0.2, 0.85)
+			_calculate_auto_level_rpms(hold_thrust, target_pitch_angle, 0.0, yaw_rate, delta)
+
+		2:
+			# Phase 2: Land
+			_process_landing(delta)
+
+func _process_crashed(_delta: float) -> void:
 	for i in range(4):
 		target_motor_rpms[i] = 0.0
 
+# --- Core Flight Commands ---
+
+func takeoff() -> bool:
+	print("[INPUT] TAKEOFF_BUTTON_PRESSED")
+	print("[COMMAND] TAKEOFF_REQUESTED")
+
+	if current_state == DroneState.FLYING or current_state == DroneState.HOVER or current_state == DroneState.TAKEOFF:
+		print("[VALIDATION] Cannot Take Off: Already airborne")
+		preflight_failed.emit("Already airborne")
+		return false
+
+	var err = _perform_preflight_check()
+	if not err.is_empty():
+		print("[VALIDATION] PREFLIGHT_FAILED: %s" % err)
+		preflight_failed.emit(err)
+		return false
+
+	print("[VALIDATION] PREFLIGHT_PASSED")
+	current_state = DroneState.MOTOR_STARTING
+	state_timer = 0.0
+	drone_state_changed.emit("MOTOR_STARTING")
+	print("[MOTORS] STARTING")
+	return true
+
+func land() -> void:
+	print("[COMMAND] LAND_REQUESTED")
+	if current_state == DroneState.FLYING or current_state == DroneState.HOVER or current_state == DroneState.TAKEOFF or current_state == DroneState.RTH:
+		current_state = DroneState.LANDING
+		state_timer = 0.0
+		drone_state_changed.emit("LANDING")
+		print("[FLIGHT] LANDING_INITIATED")
+
+func trigger_rth() -> bool:
+	print("[COMMAND] RTH_REQUESTED")
+	if current_state == DroneState.DISARMED or current_state == DroneState.CRASHED:
+		print("[VALIDATION] Cannot RTH: Drone not airborne")
+		return false
+
+	if current_state == DroneState.RTH:
+		cancel_rth()
+		return false
+
+	current_state = DroneState.RTH
+	rth_phase = 0
+	rth_clearance_altitude = maxf(altitude_agl, 5.0)
+	drone_state_changed.emit("RTH")
+	rth_state_changed.emit(true, get_home_distance())
+	print("[FLIGHT] RTH_ACTIVATED — Clearance Altitude: %.1f m" % rth_clearance_altitude)
+	return true
+
+func cancel_rth() -> void:
+	if current_state == DroneState.RTH:
+		current_state = DroneState.FLYING
+		drone_state_changed.emit("FLYING")
+		rth_state_changed.emit(false, get_home_distance())
+		print("[FLIGHT] RTH_CANCELLED — Manual Control Restored")
+
+func emergency_motor_cut() -> void:
+	print("[COMMAND] EMERGENCY_MOTOR_CUT")
+	for i in range(4):
+		target_motor_rpms[i] = 0.0
+		motor_rpms[i] = 0.0
+	current_state = DroneState.DISARMED
+	drone_state_changed.emit("DISARMED")
+
+func reset_to_pad() -> void:
+	print("[COMMAND] RESET_REQUESTED")
+	if stunt_engine and stunt_engine.is_stunting:
+		stunt_engine.is_stunting = false
+		stunt_engine.stunt_phase = StuntEngine.StuntState.IDLE
+	if is_inside_tree() and is_node_ready():
+		global_transform = spawn_transform
+	else:
+		transform = spawn_transform
+	linear_velocity = Vector3.ZERO
+	angular_velocity = Vector3.ZERO
+	for i in range(4):
+		motor_rpms[i] = 0.0
+		target_motor_rpms[i] = 0.0
+	battery_remaining_mah = battery_capacity_mah
+	battery_percent = 100.0
+	total_flight_time = 0.0
+	current_state = DroneState.DISARMED
+	drone_state_changed.emit("DISARMED")
+	print("[FLIGHT] RESET_COMPLETE — Placed on Pad")
+
+func get_home_distance() -> float:
+	var home_flat = Vector2(spawn_transform.origin.x, spawn_transform.origin.z)
+	var cur_pos = global_position if (is_inside_tree() and is_node_ready()) else position
+	var cur_flat = Vector2(cur_pos.x, cur_pos.z)
+	return home_flat.distance_to(cur_flat)
+
+func _perform_preflight_check() -> String:
+	if not linear_velocity.is_finite():
+		return "Physics body coordinates invalid"
+	if battery_percent < 5.0:
+		return "Battery critically low"
+	if current_state == DroneState.CRASHED:
+		return "Drone crashed — Press Reset first"
+	if altitude_agl > 0.8:
+		return "Drone not grounded on launch surface"
+	return ""
+
+# --- Physics Calculations ---
+
 func _calculate_auto_level_rpms(base_thrust: float, target_pitch_deg: float, target_roll_deg: float, target_yaw_rate: float, _delta: float) -> void:
-	# Error in pitch & roll
 	var pitch_err = deg_to_rad(target_pitch_deg - pitch_deg)
 	var roll_err = deg_to_rad(target_roll_deg - roll_deg)
 
-	# Angular velocities relative to drone frame using transpose (stable inverse for orthogonal rotation)
-	var cur_basis = global_transform.basis.orthonormalized() if is_inside_tree() else transform.basis.orthonormalized()
+	var cur_basis = global_transform.basis.orthonormalized() if (is_inside_tree() and is_node_ready()) else transform.basis.orthonormalized()
 	var local_ang_vel = cur_basis.transposed() * angular_velocity
 
-	# Torques
 	var pitch_torque = (pitch_err * pitch_pid_p) - (local_ang_vel.x * pitch_pid_d)
 	var roll_torque = (roll_err * roll_pid_p) - (local_ang_vel.z * roll_pid_d)
 	var yaw_torque = target_yaw_rate - (local_ang_vel.y * yaw_rate_p)
 
-	# Motor Layout:
-	# 0: Front-Left  (CW)   - pitch + roll + yaw
-	# 1: Front-Right (CCW)  - pitch - roll - yaw
-	# 2: Rear-Left   (CCW)  + pitch + roll - yaw
-	# 3: Rear-Right  (CW)   + pitch - roll + yaw
 	target_motor_rpms[0] = clampf(base_thrust - pitch_torque + roll_torque + (yaw_torque * 0.2), 0.0, 1.0)
 	target_motor_rpms[1] = clampf(base_thrust - pitch_torque - roll_torque - (yaw_torque * 0.2), 0.0, 1.0)
 	target_motor_rpms[2] = clampf(base_thrust + pitch_torque + roll_torque - (yaw_torque * 0.2), 0.0, 1.0)
 	target_motor_rpms[3] = clampf(base_thrust + pitch_torque - roll_torque + (yaw_torque * 0.2), 0.0, 1.0)
 
 func _calculate_acro_rpms(base_thrust: float, in_pitch: float, in_roll: float, in_yaw: float, _delta: float) -> void:
-	var cur_basis = global_transform.basis.orthonormalized() if is_inside_tree() else transform.basis.orthonormalized()
+	var cur_basis = global_transform.basis.orthonormalized() if (is_inside_tree() and is_node_ready()) else transform.basis.orthonormalized()
 	var local_ang_vel = cur_basis.transposed() * angular_velocity
 	var p_rate = (in_pitch * 5.0) - local_ang_vel.x
 	var r_rate = (in_roll * 5.0) - local_ang_vel.z
@@ -352,28 +661,39 @@ func _calculate_acro_rpms(base_thrust: float, in_pitch: float, in_roll: float, i
 	target_motor_rpms[3] = clampf(base_thrust + p_rate - r_rate + y_rate, 0.0, 1.0)
 
 func _apply_motor_forces(delta: float) -> void:
-	# Spool motors towards targets
 	for i in range(4):
 		motor_rpms[i] = move_toward(motor_rpms[i], target_motor_rpms[i], motor_spool_speed * delta)
 
-	# Sum of upward motor thrust along local Y axis
 	var total_rpm: float = 0.0
 	for rpm in motor_rpms:
 		total_rpm += rpm
 
 	var total_thrust = total_rpm * max_thrust_per_motor
 
-	# Ground effect lift boost
 	if altitude_agl < ground_effect_dist and altitude_agl > 0.05:
 		var ge_factor = 1.0 - (altitude_agl / ground_effect_dist)
 		total_thrust *= (1.0 + (ge_factor * ground_effect_mult))
 
-	var cur_basis = global_transform.basis.orthonormalized() if is_inside_tree() else transform.basis.orthonormalized()
+	var cur_basis = global_transform.basis.orthonormalized() if (is_inside_tree() and is_node_ready()) else transform.basis.orthonormalized()
 	var thrust_vector = cur_basis.y * total_thrust
 	if thrust_vector.is_finite():
 		apply_central_force(thrust_vector)
 
-	# Aerodynamic Linear Drag with explicit stability cap
+	# Physical Differential Motor Torques applied to RigidBody
+	var pitch_diff = (motor_rpms[0] + motor_rpms[1]) - (motor_rpms[2] + motor_rpms[3])
+	var pitch_torque = pitch_diff * max_thrust_per_motor * arm_length
+
+	var roll_diff = (motor_rpms[1] + motor_rpms[3]) - (motor_rpms[0] + motor_rpms[2])
+	var roll_torque = roll_diff * max_thrust_per_motor * arm_length
+
+	var yaw_diff = (motor_rpms[0] + motor_rpms[3]) - (motor_rpms[1] + motor_rpms[2])
+	var yaw_torque = -yaw_diff * max_thrust_per_motor * 0.12
+
+	var motor_torque_local = Vector3(pitch_torque, yaw_torque, roll_torque)
+	var motor_torque_world = cur_basis * motor_torque_local
+	if motor_torque_world.is_finite():
+		apply_torque(motor_torque_world)
+
 	var lin_speed = linear_velocity.length()
 	if lin_speed > 0.001 and linear_velocity.is_finite():
 		var max_drag_force = (drone_mass * lin_speed) / maxf(delta, 0.001) * 0.45
@@ -381,7 +701,6 @@ func _apply_motor_forces(delta: float) -> void:
 		var final_drag = minf(natural_drag, max_drag_force)
 		apply_central_force(-linear_velocity.normalized() * final_drag)
 
-	# Angular Damping with explicit stability cap
 	var ang_speed = angular_velocity.length()
 	if ang_speed > 0.001 and angular_velocity.is_finite():
 		var approx_inertia = drone_mass * 0.045
@@ -391,6 +710,8 @@ func _apply_motor_forces(delta: float) -> void:
 		apply_torque(-angular_velocity.normalized() * final_torque)
 
 func _emit_telemetry() -> void:
+	var home_dist = get_home_distance()
+	var est_return_sec = (home_dist / maxf(ground_speed, 6.0)) if home_dist > 1.0 else 0.0
 	var data = {
 		"state": DroneState.keys()[current_state],
 		"profile": active_profile.get("name", "Normal"),
@@ -403,18 +724,24 @@ func _emit_telemetry() -> void:
 		"roll": roll_deg,
 		"battery_pct": battery_percent,
 		"battery_volts": battery_voltage,
-		"motor_rpms": motor_rpms
+		"motor_rpms": motor_rpms,
+		"home_distance": home_dist,
+		"est_rth_time": est_return_sec,
+		"flight_time": total_flight_time,
+		"rth_active": current_state == DroneState.RTH,
+		"gps_status": "3D RTK LOCK" if altitude_agl > 0.2 else "STANDBY",
+		"rc_signal": 100 if altitude_agl < 100.0 else max(25, 100 - int(altitude_agl * 0.2))
 	}
 	telemetry_updated.emit(data)
+
+# --- Signal Callbacks ---
 
 func _on_takeoff_land_requested() -> void:
 	match current_state:
 		DroneState.DISARMED:
-			current_state = DroneState.TAKING_OFF
-			drone_state_changed.emit("TAKING_OFF")
-		DroneState.FLYING, DroneState.TAKING_OFF:
-			current_state = DroneState.LANDING
-			drone_state_changed.emit("LANDING")
+			takeoff()
+		DroneState.FLYING, DroneState.HOVER, DroneState.TAKEOFF, DroneState.RTH:
+			land()
 		DroneState.LANDING:
 			# Abort landing and resume flying
 			current_state = DroneState.FLYING
@@ -424,21 +751,6 @@ func _on_takeoff_land_requested() -> void:
 
 func _on_reset_requested() -> void:
 	reset_to_pad()
-
-func reset_to_pad() -> void:
-	if stunt_engine and stunt_engine.is_stunting:
-		stunt_engine.is_stunting = false
-		stunt_engine.stunt_phase = StuntEngine.StuntState.IDLE
-	global_transform = spawn_transform
-	linear_velocity = Vector3.ZERO
-	angular_velocity = Vector3.ZERO
-	for i in range(4):
-		motor_rpms[i] = 0.0
-		target_motor_rpms[i] = 0.0
-	battery_remaining_mah = battery_capacity_mah
-	battery_percent = 100.0
-	current_state = DroneState.DISARMED
-	drone_state_changed.emit("DISARMED")
 
 func _on_stunt_requested(stunt_type: String) -> void:
 	if stunt_engine:
@@ -450,7 +762,7 @@ func _on_flight_mode_cycle_requested() -> void:
 	var next_idx = (curr_idx + 1) % mode_keys.size()
 	set_flight_profile(mode_keys[next_idx])
 
-func _on_body_entered(body: Node) -> void:
+func _on_body_entered(_body: Node) -> void:
 	if current_state == DroneState.DISARMED:
 		return
 	var impact_velocity = linear_velocity.length()

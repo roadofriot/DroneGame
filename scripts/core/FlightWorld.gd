@@ -20,6 +20,42 @@ extends Node3D
 @onready var coins_container: Node3D = $EnvironmentGeometry/CollectibleCoins
 
 func _ready() -> void:
+	# Connect InputRouter Action Signals to Drone and Systems
+	if input_router and quadcopter:
+		var cam_dir = get_node_or_null("CameraDirector")
+		input_router.takeoff_requested.connect(func(): quadcopter.takeoff())
+		input_router.land_requested.connect(func(): quadcopter.land())
+		input_router.rth_requested.connect(func():
+			if quadcopter.current_state == FlightPhysics.DroneState.RTH:
+				quadcopter.cancel_rth()
+			else:
+				quadcopter.trigger_rth()
+		)
+		input_router.takeoff_land_requested.connect(func():
+			if quadcopter.current_state == FlightPhysics.DroneState.DISARMED:
+				quadcopter.takeoff()
+			elif quadcopter.current_state == FlightPhysics.DroneState.CRASHED:
+				quadcopter.reset_to_pad()
+			else:
+				quadcopter.land()
+		)
+		input_router.emergency_cut_requested.connect(func(): quadcopter.emergency_motor_cut())
+		input_router.reset_requested.connect(func(): quadcopter.reset_to_pad())
+		input_router.flight_mode_cycle_requested.connect(func():
+			var modes = ["cine", "normal", "sport", "arcade", "acro"]
+			var cur_idx = modes.find(quadcopter.active_profile_name)
+			var next_idx = (cur_idx + 1) % modes.size()
+			quadcopter.set_flight_profile(modes[next_idx])
+		)
+		input_router.stunt_requested.connect(func(stunt_type):
+			if quadcopter.stunt_engine:
+				quadcopter.stunt_engine.execute_stunt(stunt_type)
+		)
+		if cam_dir:
+			input_router.camera_toggle_requested.connect(func(): cam_dir.cycle_camera_mode())
+		if pause_menu:
+			input_router.pause_requested.connect(func(): pause_menu.toggle_pause())
+
 	# Register sequential gates with MissionManager
 	var gates: Array[MissionGate] = []
 	if gates_container:

@@ -21,6 +21,7 @@ TEST_SUITES=(
   "tests/unit/test_stunt_and_academy.gd:Phase 4 (Flight Academy & Stunt Engine)"
   "tests/unit/test_location_explorer.gd:Phase 5 (Real Location Explorer)"
   "tests/unit/test_audio_vfx_settings.gd:Phase 6 (Audio Synthesizer, VFX & Presets)"
+  "tests/unit/test_comprehensive_flight_audit.gd:Phase 7 (Master 20-Point Flight Audit TEST 001 - 020)"
 )
 
 TOTAL_SUITES=${#TEST_SUITES[@]}
@@ -50,11 +51,11 @@ echo "MASTER TEST SUMMARY:"
 echo "Total Suites:  ${TOTAL_SUITES}"
 echo "Passed Suites: ${PASSED_SUITES}"
 echo "Failed Suites: ${FAILED_SUITES}"
-echo "Total Unit Tests Verified: $((PASSED_SUITES * 6)) / $((TOTAL_SUITES * 6))"
+echo "Total Suites Verified: ${PASSED_SUITES} / ${TOTAL_SUITES}"
 echo "================================================================================"
 
 if [ "${FAILED_SUITES}" -eq 0 ]; then
-  echo ">> SUCCESS: ALL 36 AUTOMATED VERIFICATION TESTS PASSED (100%) <<"
+  echo ">> SUCCESS: ALL AUTOMATED ACCEPTANCE TESTS PASSED (100%) <<"
   exit 0
 else
   echo ">> FAILURE: ONE OR MORE TEST SUITES FAILED <<"

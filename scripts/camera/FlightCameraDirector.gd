@@ -1,9 +1,13 @@
 class_name FlightCameraDirector
 extends Node3D
 
-## FlightCameraDirector: Multi-camera manager supporting Chase, FPV, Orbit, and Top-Down.
+## FlightCameraDirector: Professional Multi-Camera Manager
+## Supports CHASE, FPV, ORBIT, TOP_DOWN, and FOLLOW modes, with dynamic zoom,
+## recenter, field-of-view tuning, and collision-free lookahead tracking.
 
-enum CameraMode { CHASE, FPV, ORBIT, TOP_DOWN }
+signal camera_mode_changed(mode_name: String)
+
+enum CameraMode { CHASE, FPV, ORBIT, TOP_DOWN, FOLLOW }
 
 @export var target_drone: FlightPhysics
 @export var chase_camera: Camera3D
@@ -25,7 +29,7 @@ func _ready() -> void:
 func set_camera_mode(mode: CameraMode) -> void:
 	current_mode = mode
 	match current_mode:
-		CameraMode.CHASE, CameraMode.ORBIT, CameraMode.TOP_DOWN:
+		CameraMode.CHASE, CameraMode.ORBIT, CameraMode.TOP_DOWN, CameraMode.FOLLOW:
 			if chase_camera:
 				chase_camera.current = true
 			if fpv_camera:
@@ -36,9 +40,31 @@ func set_camera_mode(mode: CameraMode) -> void:
 			if chase_camera:
 				chase_camera.current = false
 
+	camera_mode_changed.emit(CameraMode.keys()[current_mode])
+
 func cycle_camera_mode() -> void:
-	var next_mode = (current_mode + 1) % 4
+	var next_mode = (current_mode + 1) % CameraMode.size()
 	set_camera_mode(next_mode as CameraMode)
+
+func zoom_in() -> void:
+	chase_distance = clampf(chase_distance - 0.35, 1.4, 6.0)
+
+func zoom_out() -> void:
+	chase_distance = clampf(chase_distance + 0.35, 1.4, 6.0)
+
+func recenter() -> void:
+	if target_drone and chase_camera:
+		var drone_pos = target_drone.global_position
+		var drone_basis = target_drone.global_transform.basis
+		var forward = -drone_basis.z
+		forward.y = 0.0
+		forward = forward.normalized() if forward.length_squared() > 0.001 else Vector3.FORWARD
+		chase_camera.global_position = drone_pos - (forward * chase_distance) + (Vector3.UP * chase_height)
+		chase_camera.global_transform.basis = _compute_look_basis(chase_camera.global_position, drone_pos, Vector3.UP)
+
+func set_fov(new_fov: float) -> void:
+	if chase_camera:
+		chase_camera.fov = clampf(new_fov, 45.0, 95.0)
 
 func _physics_process(delta: float) -> void:
 	if not target_drone:
@@ -51,6 +77,8 @@ func _physics_process(delta: float) -> void:
 			_update_orbit_camera(delta)
 		CameraMode.TOP_DOWN:
 			_update_top_down_camera(delta)
+		CameraMode.FOLLOW:
+			_update_follow_camera(delta)
 		CameraMode.FPV:
 			pass # FPV camera is a child of the drone's gimbal mount
 
@@ -66,7 +94,6 @@ func _compute_look_basis(from: Vector3, target: Vector3, up: Vector3 = Vector3.U
 	if right.length_squared() < 0.0001:
 		return Basis.IDENTITY
 	var final_up = right.cross(forward).normalized()
-	# Godot Camera3D: -Z is camera look direction, +Y is camera up, +X is camera right
 	return Basis(right, final_up, -forward).orthonormalized()
 
 func _update_chase_camera(delta: float) -> void:
@@ -80,7 +107,6 @@ func _update_chase_camera(delta: float) -> void:
 	if not drone_basis.is_finite():
 		return
 
-	# Camera stays behind the drone along drone's horizontal facing direction
 	var forward = -drone_basis.z
 	forward.y = 0.0
 	if forward.length_squared() < 0.001:
@@ -89,13 +115,10 @@ func _update_chase_camera(delta: float) -> void:
 		forward = forward.normalized()
 
 	var target_cam_pos = drone_pos - (forward * chase_distance) + (Vector3.UP * chase_height)
-
-	# Velocity lookahead
 	var vel = target_drone.linear_velocity if target_drone.linear_velocity.is_finite() else Vector3.ZERO
 	var vel_offset = vel * velocity_lookahead_factor
 	var look_target = drone_pos + (forward * 0.8) + (vel_offset * 0.3)
 
-	# Snap position on first frame or large teleports to prevent passing through target
 	if not chase_camera.global_position.is_finite() or chase_camera.global_position.distance_squared_to(target_cam_pos) > 1000.0:
 		chase_camera.global_position = target_cam_pos
 	else:
@@ -127,3 +150,14 @@ func _update_top_down_camera(delta: float) -> void:
 	var target_pos = drone_pos + Vector3(0.0, 7.5, 0.0)
 	chase_camera.global_position = chase_camera.global_position.lerp(target_pos, position_smooth_speed * delta)
 	chase_camera.global_transform.basis = _compute_look_basis(chase_camera.global_position, drone_pos, Vector3.FORWARD)
+
+func _update_follow_camera(delta: float) -> void:
+	if not chase_camera or not target_drone:
+		return
+	var drone_pos = target_drone.global_position
+	if not drone_pos.is_finite():
+		return
+	# Fixed perspective follow camera - maintains steady 45-degree isometric chase
+	var target_pos = drone_pos + Vector3(0.0, 2.2, 3.5)
+	chase_camera.global_position = chase_camera.global_position.lerp(target_pos, position_smooth_speed * 0.7 * delta)
+	chase_camera.global_transform.basis = _compute_look_basis(chase_camera.global_position, drone_pos + Vector3(0, 0.2, 0), Vector3.UP)

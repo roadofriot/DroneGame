@@ -1,44 +1,113 @@
-[gd_scene load_steps=7 format=3 uid="uid://b0yqvdku6s201"]
+[gd_scene load_steps=12 format=3 uid="uid://b0yqvdku6s201"]
 
 [ext_resource type="Script" path="res://scripts/ui/FlightHUD.gd" id="1_hud"]
 [ext_resource type="Script" path="res://scripts/ui/VirtualJoystick.gd" id="2_joystick"]
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_TopBar"]
-bg_color = Color(0.06, 0.09, 0.13, 0.82)
+bg_color = Color(0.05, 0.08, 0.14, 0.75)
 border_width_bottom = 2
-border_color = Color(0.18, 0.65, 0.9, 0.6)
+border_color = Color(0.15, 0.65, 0.85, 0.45)
 corner_radius_bottom_right = 8
 corner_radius_bottom_left = 8
-content_margin_left = 16.0
-content_margin_top = 8.0
-content_margin_right = 16.0
-content_margin_bottom = 8.0
+content_margin_left = 14.0
+content_margin_top = 6.0
+content_margin_right = 14.0
+content_margin_bottom = 6.0
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_Pill"]
-bg_color = Color(0.12, 0.16, 0.22, 0.85)
-corner_radius_top_left = 4
-corner_radius_top_right = 4
-corner_radius_bottom_right = 4
-corner_radius_bottom_left = 4
+bg_color = Color(0.08, 0.12, 0.18, 0.8)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.2, 0.45, 0.65, 0.4)
+corner_radius_top_left = 5
+corner_radius_top_right = 5
+corner_radius_bottom_right = 5
+corner_radius_bottom_left = 5
+content_margin_left = 8.0
+content_margin_top = 3.0
+content_margin_right = 8.0
+content_margin_bottom = 3.0
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_CircleBtn"]
+bg_color = Color(0.06, 0.1, 0.16, 0.85)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(0.2, 0.8, 1.0, 0.75)
+corner_radius_top_left = 24
+corner_radius_top_right = 24
+corner_radius_bottom_right = 24
+corner_radius_bottom_left = 24
+content_margin_left = 6.0
+content_margin_top = 6.0
+content_margin_right = 6.0
+content_margin_bottom = 6.0
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_ModeBtnNormal"]
+bg_color = Color(0.08, 0.14, 0.22, 0.85)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.25, 0.5, 0.75, 0.5)
+corner_radius_top_left = 6
+corner_radius_top_right = 6
+corner_radius_bottom_right = 6
+corner_radius_bottom_left = 6
 content_margin_left = 10.0
 content_margin_top = 4.0
 content_margin_right = 10.0
 content_margin_bottom = 4.0
 
-[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_BtnNormal"]
-bg_color = Color(0.1, 0.35, 0.55, 0.85)
-border_width_left = 1
-border_width_top = 1
-border_width_right = 1
-border_width_bottom = 1
-border_color = Color(0.25, 0.8, 1, 0.9)
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_ModeBtnActive"]
+bg_color = Color(0.05, 0.35, 0.55, 0.95)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(0.2, 0.95, 1.0, 0.95)
 corner_radius_top_left = 6
 corner_radius_top_right = 6
 corner_radius_bottom_right = 6
 corner_radius_bottom_left = 6
-content_margin_left = 14.0
+content_margin_left = 10.0
+content_margin_top = 4.0
+content_margin_right = 10.0
+content_margin_bottom = 4.0
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_ActionBtn"]
+bg_color = Color(0.06, 0.12, 0.2, 0.88)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.3, 0.75, 1.0, 0.8)
+corner_radius_top_left = 6
+corner_radius_top_right = 6
+corner_radius_bottom_right = 6
+corner_radius_bottom_left = 6
+content_margin_left = 12.0
+content_margin_top = 6.0
+content_margin_right = 12.0
+content_margin_bottom = 6.0
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_BoxPanel"]
+bg_color = Color(0.05, 0.09, 0.15, 0.82)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.18, 0.45, 0.7, 0.5)
+corner_radius_top_left = 6
+corner_radius_top_right = 6
+corner_radius_bottom_right = 6
+corner_radius_bottom_left = 6
+content_margin_left = 10.0
 content_margin_top = 8.0
-content_margin_right = 14.0
+content_margin_right = 10.0
 content_margin_bottom = 8.0
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_Warning"]
@@ -52,29 +121,53 @@ content_margin_top = 6.0
 content_margin_right = 16.0
 content_margin_bottom = 6.0
 
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_Modal"]
+bg_color = Color(0.04, 0.07, 0.12, 0.95)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(0.2, 0.75, 1.0, 0.8)
+corner_radius_top_left = 12
+corner_radius_top_right = 12
+corner_radius_bottom_right = 12
+corner_radius_bottom_left = 12
+content_margin_left = 20.0
+content_margin_top = 16.0
+content_margin_right = 20.0
+content_margin_bottom = 16.0
+
 [node name="FlightHUD" type="CanvasLayer"]
 script = ExtResource("1_hud")
 
 [node name="TopBar" type="PanelContainer" parent="."]
 anchors_preset = 10
 anchor_right = 1.0
-offset_bottom = 48.0
+offset_bottom = 44.0
 grow_horizontal = 2
 theme_override_styles/panel = SubResource("StyleBoxFlat_TopBar")
 
 [node name="HBox" type="HBoxContainer" parent="TopBar"]
 layout_mode = 2
-theme_override_constants/separation = 12
+theme_override_constants/separation = 10
 alignment = 1
 
-[node name="ModePill" type="PanelContainer" parent="TopBar/HBox"]
+[node name="BtnLocation" type="Button" parent="TopBar/HBox"]
+custom_minimum_size = Vector2(36, 32)
+layout_mode = 2
+theme_override_styles/normal = SubResource("StyleBoxFlat_Pill")
+theme_override_font_sizes/font_size = 14
+text = "📍 नक्सा"
+
+[node name="GPSPill" type="PanelContainer" parent="TopBar/HBox"]
 layout_mode = 2
 theme_override_styles/panel = SubResource("StyleBoxFlat_Pill")
 
-[node name="LabelMode" type="Label" parent="TopBar/HBox/ModePill"]
+[node name="LabelGPS" type="Label" parent="TopBar/HBox/GPSPill"]
 layout_mode = 2
-theme_override_colors/font_color = Color(0.2, 0.85, 1, 1)
-text = "NORMAL"
+theme_override_colors/font_color = Color(0.2, 0.95, 0.45, 1)
+theme_override_font_sizes/font_size = 12
+text = "📶 GPS सिग्नल (बलियो)"
 
 [node name="BatteryPill" type="PanelContainer" parent="TopBar/HBox"]
 layout_mode = 2
@@ -82,40 +175,291 @@ theme_override_styles/panel = SubResource("StyleBoxFlat_Pill")
 
 [node name="LabelBattery" type="Label" parent="TopBar/HBox/BatteryPill"]
 layout_mode = 2
-theme_override_colors/font_color = Color(0.2, 0.95, 0.4, 1)
-text = "100% (15.2V)"
+theme_override_colors/font_color = Color(0.2, 0.95, 0.45, 1)
+theme_override_font_sizes/font_size = 12
+text = "🔋 ८४% (15.2V)"
 
-[node name="SpeedPill" type="PanelContainer" parent="TopBar/HBox"]
+[node name="SignalPill" type="PanelContainer" parent="TopBar/HBox"]
 layout_mode = 2
 theme_override_styles/panel = SubResource("StyleBoxFlat_Pill")
 
-[node name="LabelSpeed" type="Label" parent="TopBar/HBox/SpeedPill"]
+[node name="LabelSignal" type="Label" parent="TopBar/HBox/SignalPill"]
 layout_mode = 2
-text = "SPD: 0.0 m/s"
+theme_override_colors/font_color = Color(0.35, 0.88, 1, 1)
+theme_override_font_sizes/font_size = 12
+text = "((o)) RC सिग्नल बल"
 
-[node name="AltPill" type="PanelContainer" parent="TopBar/HBox"]
+[node name="SatPill" type="PanelContainer" parent="TopBar/HBox"]
 layout_mode = 2
 theme_override_styles/panel = SubResource("StyleBoxFlat_Pill")
 
-[node name="LabelAlt" type="Label" parent="TopBar/HBox/AltPill"]
+[node name="LabelSatellites" type="Label" parent="TopBar/HBox/SatPill"]
 layout_mode = 2
-text = "ALT: 0.0 m"
+theme_override_colors/font_color = Color(0.8, 0.9, 1, 1)
+theme_override_font_sizes/font_size = 12
+text = "🛰️ भू-उपग्रह १८"
 
-[node name="ClimbPill" type="PanelContainer" parent="TopBar/HBox"]
+[node name="CamStatusPill" type="PanelContainer" parent="TopBar/HBox"]
 layout_mode = 2
 theme_override_styles/panel = SubResource("StyleBoxFlat_Pill")
 
-[node name="LabelClimb" type="Label" parent="TopBar/HBox/ClimbPill"]
+[node name="LabelCameraStatus" type="Label" parent="TopBar/HBox/CamStatusPill"]
 layout_mode = 2
-text = "V/S: 0.0 m/s"
+theme_override_colors/font_color = Color(1, 0.35, 0.35, 1)
+theme_override_font_sizes/font_size = 12
+text = "4K, 60fps, रेकर्डिङ 🔴"
 
-[node name="HeadingPill" type="PanelContainer" parent="TopBar/HBox"]
+[node name="Spacer" type="Control" parent="TopBar/HBox"]
 layout_mode = 2
-theme_override_styles/panel = SubResource("StyleBoxFlat_Pill")
+size_flags_horizontal = 3
 
-[node name="LabelHeading" type="Label" parent="TopBar/HBox/HeadingPill"]
+[node name="BtnMenu" type="Button" parent="TopBar/HBox"]
+custom_minimum_size = Vector2(40, 32)
 layout_mode = 2
-text = "HDG: 000° N"
+theme_override_styles/normal = SubResource("StyleBoxFlat_Pill")
+theme_override_font_sizes/font_size = 15
+text = "···"
+
+[node name="LeftZoomColumn" type="VBoxContainer" parent="."]
+offset_left = 24.0
+offset_top = 210.0
+offset_right = 84.0
+offset_bottom = 370.0
+theme_override_constants/separation = 8
+alignment = 1
+
+[node name="LabelZoomTitle" type="Label" parent="LeftZoomColumn"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.7, 0.85, 1, 0.8)
+theme_override_font_sizes/font_size = 10
+text = "गिम्बल / जुम"
+horizontal_alignment = 1
+
+[node name="BtnZoomIn" type="Button" parent="LeftZoomColumn"]
+custom_minimum_size = Vector2(48, 48)
+layout_mode = 2
+theme_override_styles/normal = SubResource("StyleBoxFlat_CircleBtn")
+theme_override_font_sizes/font_size = 20
+text = "+"
+
+[node name="BtnZoomReset" type="Button" parent="LeftZoomColumn"]
+custom_minimum_size = Vector2(48, 48)
+layout_mode = 2
+theme_override_styles/normal = SubResource("StyleBoxFlat_CircleBtn")
+theme_override_font_sizes/font_size = 16
+text = "⊙"
+
+[node name="BtnZoomOut" type="Button" parent="LeftZoomColumn"]
+custom_minimum_size = Vector2(48, 48)
+layout_mode = 2
+theme_override_styles/normal = SubResource("StyleBoxFlat_CircleBtn")
+theme_override_font_sizes/font_size = 20
+text = "−"
+
+[node name="LeftCluster" type="MarginContainer" parent="."]
+anchors_preset = 2
+anchor_top = 1.0
+anchor_bottom = 1.0
+offset_top = -300.0
+offset_right = 320.0
+grow_vertical = 0
+theme_override_constants/margin_left = 48
+theme_override_constants/margin_bottom = 24
+
+[node name="LeftJoystick" type="Control" parent="LeftCluster"]
+custom_minimum_size = Vector2(260, 260)
+layout_mode = 2
+script = ExtResource("2_joystick")
+stick_name = "THROTTLE / YAW"
+stick_type = "LEFT"
+
+[node name="CenterControls" type="VBoxContainer" parent="."]
+anchors_preset = 7
+anchor_left = 0.5
+anchor_top = 1.0
+anchor_right = 0.5
+anchor_bottom = 1.0
+offset_left = -230.0
+offset_top = -140.0
+offset_right = 230.0
+offset_bottom = -16.0
+grow_horizontal = 2
+grow_vertical = 0
+theme_override_constants/separation = 6
+alignment = 1
+
+[node name="ModeContainer" type="VBoxContainer" parent="CenterControls"]
+layout_mode = 2
+theme_override_constants/separation = 2
+alignment = 1
+
+[node name="LabelModeTitle" type="Label" parent="CenterControls/ModeContainer"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.75, 0.9, 1, 0.85)
+theme_override_font_sizes/font_size = 11
+text = "उडान मोडहरू (Flight Modes)"
+horizontal_alignment = 1
+
+[node name="ModeHBox" type="HBoxContainer" parent="CenterControls/ModeContainer"]
+layout_mode = 2
+theme_override_constants/separation = 8
+alignment = 1
+
+[node name="BtnModeCine" type="Button" parent="CenterControls/ModeContainer/ModeHBox"]
+custom_minimum_size = Vector2(100, 34)
+layout_mode = 2
+theme_override_styles/normal = SubResource("StyleBoxFlat_ModeBtnNormal")
+theme_override_font_sizes/font_size = 12
+text = "Cine (सिनेमाई)"
+
+[node name="BtnModeNormal" type="Button" parent="CenterControls/ModeContainer/ModeHBox"]
+custom_minimum_size = Vector2(110, 34)
+layout_mode = 2
+theme_override_styles/normal = SubResource("StyleBoxFlat_ModeBtnActive")
+theme_override_font_sizes/font_size = 12
+text = "Normal (सामान्य)"
+
+[node name="BtnModeSport" type="Button" parent="CenterControls/ModeContainer/ModeHBox"]
+custom_minimum_size = Vector2(100, 34)
+layout_mode = 2
+theme_override_styles/normal = SubResource("StyleBoxFlat_ModeBtnNormal")
+theme_override_font_sizes/font_size = 12
+text = "Sport (खेलकुद)"
+
+[node name="ActionHBox" type="HBoxContainer" parent="CenterControls"]
+layout_mode = 2
+theme_override_constants/separation = 8
+alignment = 1
+
+[node name="BtnFailsafe" type="Button" parent="CenterControls/ActionHBox"]
+custom_minimum_size = Vector2(80, 42)
+layout_mode = 2
+theme_override_styles/normal = SubResource("StyleBoxFlat_ActionBtn")
+theme_override_font_sizes/font_size = 12
+text = "🛡️ Failsafe"
+
+[node name="BtnTakeoff" type="Button" parent="CenterControls/ActionHBox"]
+custom_minimum_size = Vector2(105, 42)
+layout_mode = 2
+theme_override_styles/normal = SubResource("StyleBoxFlat_ActionBtn")
+theme_override_colors/font_color = Color(0.2, 0.95, 0.5, 1)
+theme_override_font_sizes/font_size = 13
+text = "🛫 Take Off"
+
+[node name="BtnRTH" type="Button" parent="CenterControls/ActionHBox"]
+custom_minimum_size = Vector2(80, 42)
+layout_mode = 2
+theme_override_styles/normal = SubResource("StyleBoxFlat_ActionBtn")
+theme_override_colors/font_color = Color(0.3, 0.85, 1, 1)
+theme_override_font_sizes/font_size = 12
+text = "🏠 RTH"
+
+[node name="BtnFlip" type="Button" parent="CenterControls/ActionHBox"]
+custom_minimum_size = Vector2(75, 42)
+layout_mode = 2
+theme_override_styles/normal = SubResource("StyleBoxFlat_ActionBtn")
+theme_override_colors/font_color = Color(1.0, 0.85, 0.25, 1)
+theme_override_font_sizes/font_size = 12
+text = "🤸 Flip"
+
+[node name="BtnCamToggle" type="Button" parent="CenterControls/ActionHBox"]
+custom_minimum_size = Vector2(44, 42)
+layout_mode = 2
+theme_override_styles/normal = SubResource("StyleBoxFlat_ActionBtn")
+theme_override_font_sizes/font_size = 16
+text = "⛶"
+
+[node name="LabelActionSubtitle" type="Label" parent="CenterControls"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.7, 0.85, 0.95, 0.75)
+theme_override_font_sizes/font_size = 10
+text = "टेक-अफ र होम रिटर्न | उडान सुरु / स्वचालित घर फर्किने"
+horizontal_alignment = 1
+
+[node name="RightTelemetryCluster" type="VBoxContainer" parent="."]
+anchors_preset = 1
+anchor_left = 1.0
+anchor_right = 1.0
+offset_left = -230.0
+offset_top = 58.0
+offset_right = -18.0
+offset_bottom = 200.0
+grow_horizontal = 0
+theme_override_constants/separation = 6
+
+[node name="TelemetryBox" type="PanelContainer" parent="RightTelemetryCluster"]
+layout_mode = 2
+theme_override_styles/panel = SubResource("StyleBoxFlat_BoxPanel")
+
+[node name="VBox" type="VBoxContainer" parent="RightTelemetryCluster/TelemetryBox"]
+layout_mode = 2
+theme_override_constants/separation = 3
+
+[node name="LabelTeleTitle" type="Label" parent="RightTelemetryCluster/TelemetryBox/VBox"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.2, 0.85, 1, 1)
+theme_override_font_sizes/font_size = 11
+text = "टेलिमेट्री र तथ्याङ्क"
+horizontal_alignment = 1
+
+[node name="LabelH" type="Label" parent="RightTelemetryCluster/TelemetryBox/VBox"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.9, 0.95, 1, 1)
+theme_override_font_sizes/font_size = 12
+text = "H:  ०.० मि. (उचाइ)"
+
+[node name="LabelHS" type="Label" parent="RightTelemetryCluster/TelemetryBox/VBox"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.9, 0.95, 1, 1)
+theme_override_font_sizes/font_size = 12
+text = "HS: ०.० मि./से (स्पीड)"
+
+[node name="LabelD" type="Label" parent="RightTelemetryCluster/TelemetryBox/VBox"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.9, 0.95, 1, 1)
+theme_override_font_sizes/font_size = 12
+text = "D:  ०.० मि. (दुरी)"
+
+[node name="SensorBox" type="PanelContainer" parent="RightTelemetryCluster"]
+layout_mode = 2
+theme_override_styles/panel = SubResource("StyleBoxFlat_BoxPanel")
+
+[node name="HBox" type="HBoxContainer" parent="RightTelemetryCluster/SensorBox"]
+layout_mode = 2
+theme_override_constants/separation = 8
+alignment = 1
+
+[node name="SensorIcon" type="Label" parent="RightTelemetryCluster/SensorBox/HBox"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.2, 0.95, 0.5, 1)
+theme_override_font_sizes/font_size = 14
+text = "((🔔))"
+
+[node name="SensorLabel" type="Label" parent="RightTelemetryCluster/SensorBox/HBox"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.75, 0.9, 1, 0.85)
+theme_override_font_sizes/font_size = 10
+text = "चेतावनी र सेन्सर:\nObstacle Sensor Active"
+
+[node name="RightCluster" type="MarginContainer" parent="."]
+anchors_preset = 3
+anchor_left = 1.0
+anchor_top = 1.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = -320.0
+offset_top = -300.0
+grow_horizontal = 0
+grow_vertical = 0
+theme_override_constants/margin_right = 48
+theme_override_constants/margin_bottom = 24
+
+[node name="RightJoystick" type="Control" parent="RightCluster"]
+custom_minimum_size = Vector2(260, 260)
+layout_mode = 2
+script = ExtResource("2_joystick")
+stick_name = "PITCH / ROLL"
+stick_type = "RIGHT"
 
 [node name="CenterOverlay" type="Control" parent="."]
 layout_mode = 3
@@ -127,23 +471,26 @@ grow_vertical = 2
 mouse_filter = 2
 
 [node name="StateBanner" type="Label" parent="CenterOverlay"]
-visible = false
 layout_mode = 1
 anchors_preset = 8
 anchor_left = 0.5
 anchor_top = 0.5
 anchor_right = 0.5
 anchor_bottom = 0.5
-offset_left = -200.0
+offset_left = -300.0
 offset_top = -140.0
-offset_right = 200.0
-offset_bottom = -100.0
+offset_right = 300.0
+offset_bottom = -95.0
 grow_horizontal = 2
 grow_vertical = 2
-theme_override_colors/font_color = Color(1, 0.9, 0.2, 1)
-theme_override_font_sizes/font_size = 20
-text = "READY FOR TAKEOFF"
+theme_override_colors/font_color = Color(1, 0.9, 0.25, 1)
+theme_override_colors/font_shadow_color = Color(0, 0, 0, 0.8)
+theme_override_constants/shadow_offset_x = 1
+theme_override_constants/shadow_offset_y = 1
+theme_override_font_sizes/font_size = 18
+text = "SYSTEMS INITIALIZED — READY FOR TAKEOFF"
 horizontal_alignment = 1
+vertical_alignment = 1
 
 [node name="ProximityWarning" type="Label" parent="CenterOverlay"]
 visible = false
@@ -162,103 +509,74 @@ grow_vertical = 2
 theme_override_styles/normal = SubResource("StyleBoxFlat_Warning")
 text = "⚠️ TERRAIN PROXIMITY"
 horizontal_alignment = 1
+vertical_alignment = 1
 
-[node name="LeftCluster" type="MarginContainer" parent="."]
-anchors_preset = 2
-anchor_top = 1.0
-anchor_bottom = 1.0
-offset_top = -280.0
-offset_right = 280.0
-grow_vertical = 0
-theme_override_constants/margin_left = 24
-theme_override_constants/margin_bottom = 24
-
-[node name="LeftJoystick" type="Control" parent="LeftCluster"]
-custom_minimum_size = Vector2(240, 240)
-layout_mode = 2
-script = ExtResource("2_joystick")
-
-[node name="RightCluster" type="MarginContainer" parent="."]
-anchors_preset = 3
-anchor_left = 1.0
-anchor_top = 1.0
-anchor_right = 1.0
-anchor_bottom = 1.0
-offset_left = -280.0
-offset_top = -280.0
-grow_horizontal = 0
-grow_vertical = 0
-theme_override_constants/margin_right = 24
-theme_override_constants/margin_bottom = 24
-
-[node name="RightJoystick" type="Control" parent="RightCluster"]
-custom_minimum_size = Vector2(240, 240)
-layout_mode = 2
-script = ExtResource("2_joystick")
-
-[node name="BottomBar" type="MarginContainer" parent="."]
-anchors_preset = 7
+[node name="SettingsModal" type="PanelContainer" parent="."]
+visible = false
+anchors_preset = 8
 anchor_left = 0.5
-anchor_top = 1.0
+anchor_top = 0.5
 anchor_right = 0.5
-anchor_bottom = 1.0
-offset_left = -440.0
-offset_top = -80.0
-offset_right = 440.0
+anchor_bottom = 0.5
+offset_left = -180.0
+offset_top = -170.0
+offset_right = 180.0
+offset_bottom = 170.0
 grow_horizontal = 2
-grow_vertical = 0
-theme_override_constants/margin_bottom = 18
+grow_vertical = 2
+theme_override_styles/panel = SubResource("StyleBoxFlat_Modal")
 
-[node name="HBox" type="HBoxContainer" parent="BottomBar"]
+[node name="VBox" type="VBoxContainer" parent="SettingsModal"]
 layout_mode = 2
-theme_override_constants/separation = 12
+theme_override_constants/separation = 10
 alignment = 1
 
-[node name="BtnTakeoffLand" type="Button" parent="BottomBar/HBox"]
-custom_minimum_size = Vector2(115, 48)
+[node name="Title" type="Label" parent="SettingsModal/VBox"]
 layout_mode = 2
-theme_override_styles/normal = SubResource("StyleBoxFlat_BtnNormal")
+theme_override_colors/font_color = Color(0.2, 0.9, 1, 1)
 theme_override_font_sizes/font_size = 15
-text = "TAKEOFF"
+text = "⚙️ ड्रोन सेटिङहरू (Drone Settings)"
+horizontal_alignment = 1
 
-[node name="BtnCamera" type="Button" parent="BottomBar/HBox"]
-custom_minimum_size = Vector2(95, 48)
+[node name="BtnDroneSound" type="Button" parent="SettingsModal/VBox"]
+custom_minimum_size = Vector2(0, 36)
 layout_mode = 2
-theme_override_styles/normal = SubResource("StyleBoxFlat_BtnNormal")
-theme_override_font_sizes/font_size = 15
-text = "📷 CAM"
+theme_override_styles/normal = SubResource("StyleBoxFlat_ActionBtn")
+theme_override_font_sizes/font_size = 13
+text = "🚁 ड्रोन साउन्ड: ON"
 
-[node name="BtnMode" type="Button" parent="BottomBar/HBox"]
-custom_minimum_size = Vector2(95, 48)
+[node name="BtnEngine" type="Button" parent="SettingsModal/VBox"]
+custom_minimum_size = Vector2(0, 36)
 layout_mode = 2
-theme_override_styles/normal = SubResource("StyleBoxFlat_BtnNormal")
-theme_override_font_sizes/font_size = 15
-text = "🕹️ MODE"
+theme_override_styles/normal = SubResource("StyleBoxFlat_ActionBtn")
+theme_override_font_sizes/font_size = 13
+text = "⚙️ इन्जिन प्रोफाइल: FPV TURBO"
 
-[node name="BtnSound" type="Button" parent="BottomBar/HBox"]
-custom_minimum_size = Vector2(100, 48)
+[node name="BtnSound" type="Button" parent="SettingsModal/VBox"]
+custom_minimum_size = Vector2(0, 36)
 layout_mode = 2
-theme_override_styles/normal = SubResource("StyleBoxFlat_BtnNormal")
-theme_override_font_sizes/font_size = 15
-text = "🔊 SOUND"
+theme_override_styles/normal = SubResource("StyleBoxFlat_ActionBtn")
+theme_override_font_sizes/font_size = 13
+text = "🔊 मास्टर साउन्ड: ON"
 
-[node name="BtnEngine" type="Button" parent="BottomBar/HBox"]
-custom_minimum_size = Vector2(105, 48)
+[node name="BtnReset" type="Button" parent="SettingsModal/VBox"]
+custom_minimum_size = Vector2(0, 36)
 layout_mode = 2
-theme_override_styles/normal = SubResource("StyleBoxFlat_BtnNormal")
-theme_override_font_sizes/font_size = 15
-text = "⚙️ TURBO"
+theme_override_styles/normal = SubResource("StyleBoxFlat_ActionBtn")
+theme_override_font_sizes/font_size = 13
+text = "🔄 प्याडमा रिसेट गर्नुहोस् (Pad Reset)"
 
-[node name="BtnWorlds" type="Button" parent="BottomBar/HBox"]
-custom_minimum_size = Vector2(95, 48)
+[node name="BtnWorlds" type="Button" parent="SettingsModal/VBox"]
+custom_minimum_size = Vector2(0, 36)
 layout_mode = 2
-theme_override_styles/normal = SubResource("StyleBoxFlat_BtnNormal")
-theme_override_font_sizes/font_size = 15
-text = "🌍 WORLDS"
+theme_override_styles/normal = SubResource("StyleBoxFlat_ActionBtn")
+theme_override_font_sizes/font_size = 13
+text = "🌍 स्थान / वर्ल्ड परिवर्तन गर्नुहोस्"
 
-[node name="BtnReset" type="Button" parent="BottomBar/HBox"]
-custom_minimum_size = Vector2(95, 48)
+[node name="BtnCloseSettings" type="Button" parent="SettingsModal/VBox"]
+custom_minimum_size = Vector2(0, 36)
 layout_mode = 2
-theme_override_styles/normal = SubResource("StyleBoxFlat_BtnNormal")
-theme_override_font_sizes/font_size = 15
-text = "🔄 RESET"
+theme_override_styles/normal = SubResource("StyleBoxFlat_ActionBtn")
+theme_override_colors/font_color = Color(1, 0.4, 0.4, 1)
+theme_override_font_sizes/font_size = 13
+text = "✕ बन्द गर्नुहोस् (Close)"

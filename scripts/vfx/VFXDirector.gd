@@ -43,7 +43,7 @@ func _process(_delta: float) -> void:
 		return
 
 	var alt = target_drone.altitude_agl
-	var is_flying = (target_drone.current_state == FlightPhysics.DroneState.FLYING or target_drone.current_state == FlightPhysics.DroneState.TAKING_OFF)
+	var is_flying = (target_drone.current_state == FlightPhysics.DroneState.FLYING or target_drone.current_state == FlightPhysics.DroneState.TAKEOFF or target_drone.current_state == FlightPhysics.DroneState.HOVER)
 
 	# Rotor wash ground effect active under 2.5 meters AGL
 	if is_flying and alt < 2.5 and alt > 0.1:

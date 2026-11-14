@@ -16,6 +16,7 @@ var wind_player: AudioStreamPlayer
 var sfx_player: AudioStreamPlayer
 
 var is_audio_muted: bool = false
+var is_drone_sound_muted: bool = false
 var master_volume: float = 1.0
 var sfx_volume: float = 0.85
 var motor_volume: float = 0.8
@@ -62,7 +63,17 @@ func _process(_delta: float) -> void:
 		total_rpm += rpm
 	var avg_rpm = total_rpm / 4.0
 
-	if target_drone.current_state == FlightPhysics.DroneState.FLYING or target_drone.current_state == FlightPhysics.DroneState.TAKING_OFF:
+	var can_play_motor = not is_drone_sound_muted and not is_audio_muted
+	var is_airborne = target_drone.current_state in [
+		FlightPhysics.DroneState.FLYING,
+		FlightPhysics.DroneState.HOVER,
+		FlightPhysics.DroneState.TAKEOFF,
+		FlightPhysics.DroneState.RTH,
+		FlightPhysics.DroneState.LANDING,
+		FlightPhysics.DroneState.MOTOR_STARTING
+	]
+
+	if can_play_motor and is_airborne:
 		if is_inside_tree() and not motor_player.playing:
 			motor_player.play()
 		# Dynamic pitch scaling based on selected profile
@@ -76,14 +87,14 @@ func _process(_delta: float) -> void:
 			max_pitch = 1.85
 
 		motor_player.pitch_scale = clampf(min_pitch + (avg_rpm * (max_pitch - min_pitch)), 0.4, 3.0)
-		motor_player.volume_db = linear_to_db(motor_volume * clampf(0.3 + (avg_rpm * 0.7), 0.1, 1.0))
+		motor_player.volume_db = linear_to_db(motor_volume * clampf(0.25 + (avg_rpm * 0.75), 0.1, 1.0))
 	else:
 		if motor_player.playing:
 			motor_player.stop()
 
 	# Update wind audio based on ground speed (0 to 25 m/s)
 	var speed = target_drone.ground_speed
-	if speed > 1.5 and target_drone.current_state == FlightPhysics.DroneState.FLYING:
+	if speed > 1.5 and is_airborne and not is_audio_muted:
 		if is_inside_tree() and not wind_player.playing:
 			wind_player.play()
 		var wind_ratio = clampf(speed / 20.0, 0.0, 1.0)
@@ -100,13 +111,22 @@ func cycle_motor_sound_profile() -> String:
 		var was_playing = motor_player.playing
 		var cur_pitch = motor_player.pitch_scale
 		motor_player.stream = motor_streams[current_sound_profile]
-		if was_playing and is_inside_tree() and not is_audio_muted:
+		if was_playing and is_inside_tree() and not is_audio_muted and not is_drone_sound_muted:
 			motor_player.play()
 			motor_player.pitch_scale = cur_pitch
 
 	var profile_name = MotorSoundProfile.keys()[current_sound_profile]
 	engine_profile_changed.emit(profile_name)
 	return profile_name
+
+func toggle_drone_sound() -> bool:
+	is_drone_sound_muted = not is_drone_sound_muted
+	if is_drone_sound_muted and motor_player and motor_player.playing:
+		motor_player.stop()
+	return is_drone_sound_muted
+
+func toggle_all_sound() -> bool:
+	return toggle_mute()
 
 func toggle_mute() -> bool:
 	is_audio_muted = not is_audio_muted
