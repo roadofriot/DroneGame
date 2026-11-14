@@ -12,8 +12,9 @@ All assets, shaders, audio, scripts, and procedural generators utilized in **Min
 ---
 
 ## 2. 3D Meshes, Models & Materials
-* **Fuselage, Arms, Rotors & Gimbal:** Original procedural BoxMesh, CylinderMesh, PrismMesh, and TorusMesh constructs designed in Godot 4.3.
-* **License:** Creative Commons Zero (CC0) / Public Domain.
+* **Procedural Drone Models (Phase 6):** `scripts/flight/DroneModelBuilder.gd` and `scripts/flight/DroneSpec.gd`. Built 100% procedurally at runtime from engine built-in primitive meshes (`BoxMesh`, `CylinderMesh`, `SphereMesh`, `TorusMesh`) and `StandardMaterial3D` shaders. Zero external 3D mesh files (.obj, .fbx, .gltf) or binary textures.
+* **Presets:** Scout (`data/drones/scout.tres`), Photo (`data/drones/photo.tres`), Racer (`data/drones/racer.tres`).
+* **License:** Creative Commons Zero (CC0) / MIT (Godot Engine built-in primitives).
 * **Environment Geometry:** Original terrain plane meshes, architectural towers, highway bridges, launch helipads, and flight gate hoops.
 
 ---
