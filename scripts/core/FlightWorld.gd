@@ -13,6 +13,8 @@ extends Node3D
 @onready var world_select_menu: WorldSelectMenu = get_node_or_null("FlightHUD/WorldSelectMenu")
 @onready var real_location_explorer: RealLocationExplorer = get_node_or_null("FlightHUD/RealLocationExplorer")
 @onready var training_academy: TrainingAcademy = get_node_or_null("TrainingAcademy")
+@onready var audio_director: AudioDirector = get_node_or_null("AudioDirector")
+@onready var vfx_director: VFXDirector = get_node_or_null("VFXDirector")
 
 @onready var gates_container: Node3D = $EnvironmentGeometry/FlightGates
 @onready var coins_container: Node3D = $EnvironmentGeometry/CollectibleCoins
@@ -80,13 +82,58 @@ func _ready() -> void:
 		if not training_academy.lesson_failed.is_connected(_on_academy_lesson_failed):
 			training_academy.lesson_failed.connect(_on_academy_lesson_failed)
 
+	# Initialize Audio and VFX Directors
+	if not audio_director:
+		audio_director = AudioDirector.new()
+		audio_director.name = "AudioDirector"
+		audio_director.target_drone = quadcopter
+		add_child(audio_director)
+
+	if not vfx_director:
+		vfx_director = VFXDirector.new()
+		vfx_director.name = "VFXDirector"
+		vfx_director.target_drone = quadcopter
+		add_child(vfx_director)
+
+	# Connect gate pass audio and particle effects
+	for gate in gates:
+		gate.gate_passed.connect(func(_idx, _body):
+			if audio_director: audio_director.play_gate_passed()
+			if vfx_director:
+				var g_pos = gate.global_position if gate.is_inside_tree() else gate.position
+				var g_basis = gate.global_transform.basis if gate.is_inside_tree() else gate.transform.basis
+				vfx_director.spawn_gate_pass_vfx(g_pos, g_basis)
+		)
+
+	# Connect crash audio and debris particle effects
+	if quadcopter and not quadcopter.drone_crashed.is_connected(_on_drone_crashed_feedback):
+		quadcopter.drone_crashed.connect(_on_drone_crashed_feedback)
+
+	# Apply user quality settings preset
+	var settings_svc = SettingsService.new()
+	var world_env: WorldEnvironment = get_node_or_null("WorldEnvironment")
+	var env = world_env.environment if world_env else null
+	settings_svc.apply_quality_preset(settings_svc.get_current_preset_key(), get_viewport(), env)
+
 	# Start default tutorial mission
 	if mission_manager:
 		mission_manager.start_mission("training_gate_run")
 
 func _on_coin_collected(coin_inst: CollectibleCoin, value: int) -> void:
+	if audio_director:
+		audio_director.play_coin_pickup()
+	if vfx_director and coin_inst:
+		var c_pos = coin_inst.global_position if coin_inst.is_inside_tree() else coin_inst.position
+		vfx_director.spawn_coin_pickup_vfx(c_pos)
 	if mission_manager:
 		mission_manager.record_coin_pickup(value)
+
+func _on_drone_crashed_feedback(impact_force: float) -> void:
+	if audio_director:
+		audio_director.play_crash()
+	if vfx_director and quadcopter:
+		var d_pos = quadcopter.global_position if quadcopter.is_inside_tree() else quadcopter.position
+		vfx_director.spawn_crash_vfx(d_pos, impact_force)
 
 func _on_mission_started(mission_def: Dictionary) -> void:
 	if mission_overlay:
@@ -97,6 +144,8 @@ func _on_mission_progress_updated(obj_text: String, cur_val: int, target_val: in
 		mission_overlay.update_progress(obj_text, cur_val, target_val, time_left)
 
 func _on_mission_completed(results: Dictionary) -> void:
+	if audio_director:
+		audio_director.play_mission_completed()
 	if mission_overlay:
 		mission_overlay.hide_overlay()
 	if mission_results:
