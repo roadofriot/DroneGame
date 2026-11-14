@@ -1,0 +1,218 @@
+[gd_scene load_steps=22 format=3 uid="uid://d3yq8vd2m6s44"]
+
+[ext_resource type="Script" path="res://scripts/input/InputRouter.gd" id="1_input"]
+[ext_resource type="PackedScene" uid="uid://c3q4m8r8d1p01" path="res://scenes/drones/QuadcopterRig.tscn" id="2_drone"]
+[ext_resource type="Script" path="res://scripts/camera/FlightCameraDirector.gd" id="3_cam_director"]
+[ext_resource type="PackedScene" uid="uid://b0yqvdku6s201" path="res://scenes/ui/FlightHUD.tscn" id="4_hud"]
+
+[sub_resource type="ProceduralSkyMaterial" id="ProceduralSkyMaterial_sky"]
+sky_top_color = Color(0.2, 0.45, 0.85, 1)
+sky_horizon_color = Color(0.7, 0.82, 0.95, 1)
+ground_bottom_color = Color(0.15, 0.18, 0.2, 1)
+ground_horizon_color = Color(0.7, 0.82, 0.95, 1)
+
+[sub_resource type="Sky" id="Sky_env"]
+sky_material = SubResource("ProceduralSkyMaterial_sky")
+
+[sub_resource type="Environment" id="Environment_world"]
+background_mode = 2
+sky = SubResource("Sky_env")
+ambient_light_source = 2
+ambient_light_color = Color(0.8, 0.85, 0.9, 1)
+ambient_light_energy = 0.4
+tonemap_mode = 2
+ssao_enabled = true
+glow_enabled = true
+glow_intensity = 0.5
+
+[sub_resource type="StandardMaterial3D" id="Mat_Terrain"]
+albedo_color = Color(0.22, 0.38, 0.25, 1)
+roughness = 0.85
+
+[sub_resource type="PlaneMesh" id="PlaneMesh_Ground"]
+material = SubResource("Mat_Terrain")
+size = Vector2(160, 160)
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_Ground"]
+size = Vector3(160, 0.5, 160)
+
+[sub_resource type="StandardMaterial3D" id="Mat_Pad"]
+albedo_color = Color(0.2, 0.22, 0.25, 1)
+metallic = 0.2
+roughness = 0.6
+
+[sub_resource type="CylinderMesh" id="CylinderMesh_Pad"]
+material = SubResource("Mat_Pad")
+top_radius = 2.5
+bottom_radius = 2.5
+height = 0.08
+
+[sub_resource type="StandardMaterial3D" id="Mat_YellowMarking"]
+albedo_color = Color(0.95, 0.8, 0.1, 1)
+emission_enabled = true
+emission = Color(0.95, 0.8, 0.1, 1)
+emission_energy_multiplier = 0.5
+
+[sub_resource type="TorusMesh" id="TorusMesh_PadRing"]
+material = SubResource("Mat_YellowMarking")
+inner_radius = 2.1
+outer_radius = 2.3
+
+[sub_resource type="StandardMaterial3D" id="Mat_Pylon"]
+albedo_color = Color(0.85, 0.35, 0.1, 1)
+roughness = 0.5
+
+[sub_resource type="CylinderMesh" id="CylinderMesh_Pylon"]
+material = SubResource("Mat_Pylon")
+top_radius = 0.4
+bottom_radius = 0.6
+height = 6.0
+
+[sub_resource type="CylinderShape3D" id="CylinderShape3D_Pylon"]
+height = 6.0
+radius = 0.6
+
+[sub_resource type="StandardMaterial3D" id="Mat_GateGlow"]
+albedo_color = Color(0.1, 0.8, 1, 1)
+emission_enabled = true
+emission = Color(0.1, 0.8, 1, 1)
+emission_energy_multiplier = 2.0
+
+[sub_resource type="TorusMesh" id="TorusMesh_Gate"]
+material = SubResource("Mat_GateGlow")
+inner_radius = 1.8
+outer_radius = 2.1
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_Wall"]
+size = Vector3(160, 12, 1)
+
+[node name="FlightWorld" type="Node3D"]
+
+[node name="WorldEnvironment" type="WorldEnvironment" parent="."]
+environment = SubResource("Environment_world")
+
+[node name="DirectionalLight3D" type="DirectionalLight3D" parent="."]
+transform = Transform3D(0.866025, -0.353553, 0.353553, 0, 0.707107, 0.707107, -0.5, -0.612372, 0.612372, 0, 40, 0)
+shadow_enabled = true
+
+[node name="InputRouter" type="Node" parent="."]
+script = ExtResource("1_input")
+
+[node name="Quadcopter" parent="." node_paths=PackedStringArray("input_router") instance=ExtResource("2_drone")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.1, 0)
+input_router = NodePath("../InputRouter")
+
+[node name="CameraDirector" type="Node3D" parent="." node_paths=PackedStringArray("target_drone", "chase_camera", "fpv_camera")]
+script = ExtResource("3_cam_director")
+target_drone = NodePath("../Quadcopter")
+chase_camera = NodePath("ChaseCamera")
+fpv_camera = NodePath("../Quadcopter/DroneRig/Fuselage/GimbalMount/GimbalPitch/FPVCamera")
+
+[node name="ChaseCamera" type="Camera3D" parent="CameraDirector"]
+transform = Transform3D(1, 0, 0, 0, 0.965926, 0.258819, 0, -0.258819, 0.965926, 0, 1.2, 3.2)
+current = true
+fov = 75.0
+
+[node name="FlightHUD" parent="." node_paths=PackedStringArray("input_router", "flight_physics", "camera_director") instance=ExtResource("4_hud")]
+input_router = NodePath("../InputRouter")
+flight_physics = NodePath("../Quadcopter")
+camera_director = NodePath("../CameraDirector")
+
+[node name="EnvironmentGeometry" type="Node3D" parent="."]
+
+[node name="GroundStatic" type="StaticBody3D" parent="EnvironmentGeometry"]
+
+[node name="GroundMesh" type="MeshInstance3D" parent="EnvironmentGeometry/GroundStatic"]
+mesh = SubResource("PlaneMesh_Ground")
+
+[node name="GroundCollision" type="CollisionShape3D" parent="EnvironmentGeometry/GroundStatic"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.25, 0)
+shape = SubResource("BoxShape3D_Ground")
+
+[node name="LaunchPad" type="Node3D" parent="EnvironmentGeometry"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.04, 0)
+
+[node name="PadMesh" type="MeshInstance3D" parent="EnvironmentGeometry/LaunchPad"]
+mesh = SubResource("CylinderMesh_Pad")
+
+[node name="PadRing" type="MeshInstance3D" parent="EnvironmentGeometry/LaunchPad"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.041, 0)
+mesh = SubResource("TorusMesh_PadRing")
+
+[node name="Pylons" type="Node3D" parent="EnvironmentGeometry"]
+
+[node name="Pylon_1" type="StaticBody3D" parent="EnvironmentGeometry/Pylons"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 15, 3, -15)
+
+[node name="Mesh" type="MeshInstance3D" parent="EnvironmentGeometry/Pylons/Pylon_1"]
+mesh = SubResource("CylinderMesh_Pylon")
+
+[node name="Coll" type="CollisionShape3D" parent="EnvironmentGeometry/Pylons/Pylon_1"]
+shape = SubResource("CylinderShape3D_Pylon")
+
+[node name="Pylon_2" type="StaticBody3D" parent="EnvironmentGeometry/Pylons"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -15, 3, -15)
+
+[node name="Mesh" type="MeshInstance3D" parent="EnvironmentGeometry/Pylons/Pylon_2"]
+mesh = SubResource("CylinderMesh_Pylon")
+
+[node name="Coll" type="CollisionShape3D" parent="EnvironmentGeometry/Pylons/Pylon_2"]
+shape = SubResource("CylinderShape3D_Pylon")
+
+[node name="Pylon_3" type="StaticBody3D" parent="EnvironmentGeometry/Pylons"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -15, 3, 15)
+
+[node name="Mesh" type="MeshInstance3D" parent="EnvironmentGeometry/Pylons/Pylon_3"]
+mesh = SubResource("CylinderMesh_Pylon")
+
+[node name="Coll" type="CollisionShape3D" parent="EnvironmentGeometry/Pylons/Pylon_3"]
+shape = SubResource("CylinderShape3D_Pylon")
+
+[node name="Pylon_4" type="StaticBody3D" parent="EnvironmentGeometry/Pylons"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 15, 3, 15)
+
+[node name="Mesh" type="MeshInstance3D" parent="EnvironmentGeometry/Pylons/Pylon_4"]
+mesh = SubResource("CylinderMesh_Pylon")
+
+[node name="Coll" type="CollisionShape3D" parent="EnvironmentGeometry/Pylons/Pylon_4"]
+shape = SubResource("CylinderShape3D_Pylon")
+
+[node name="FlightGates" type="Node3D" parent="EnvironmentGeometry"]
+
+[node name="Gate_1" type="Node3D" parent="EnvironmentGeometry/FlightGates"]
+transform = Transform3D(1, 0, 0, 0, -4.37114e-08, -1, 0, 1, -4.37114e-08, 0, 3.5, -12)
+
+[node name="RingMesh" type="MeshInstance3D" parent="EnvironmentGeometry/FlightGates/Gate_1"]
+mesh = SubResource("TorusMesh_Gate")
+
+[node name="Gate_2" type="Node3D" parent="EnvironmentGeometry/FlightGates"]
+transform = Transform3D(1, 0, 0, 0, -4.37114e-08, -1, 0, 1, -4.37114e-08, 0, 5.0, -28)
+
+[node name="RingMesh" type="MeshInstance3D" parent="EnvironmentGeometry/FlightGates/Gate_2"]
+mesh = SubResource("TorusMesh_Gate")
+
+[node name="BoundaryWalls" type="Node3D" parent="EnvironmentGeometry"]
+
+[node name="Wall_North" type="StaticBody3D" parent="EnvironmentGeometry/BoundaryWalls"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 6, -80)
+
+[node name="Collision" type="CollisionShape3D" parent="EnvironmentGeometry/BoundaryWalls/Wall_North"]
+shape = SubResource("BoxShape3D_Wall")
+
+[node name="Wall_South" type="StaticBody3D" parent="EnvironmentGeometry/BoundaryWalls"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 6, 80)
+
+[node name="Collision" type="CollisionShape3D" parent="EnvironmentGeometry/BoundaryWalls/Wall_South"]
+shape = SubResource("BoxShape3D_Wall")
+
+[node name="Wall_East" type="StaticBody3D" parent="EnvironmentGeometry/BoundaryWalls"]
+transform = Transform3D(-4.37114e-08, 0, 1, 0, 1, 0, -1, 0, -4.37114e-08, 80, 6, 0)
+
+[node name="Collision" type="CollisionShape3D" parent="EnvironmentGeometry/BoundaryWalls/Wall_East"]
+shape = SubResource("BoxShape3D_Wall")
+
+[node name="Wall_West" type="StaticBody3D" parent="EnvironmentGeometry/BoundaryWalls"]
+transform = Transform3D(-4.37114e-08, 0, 1, 0, 1, 0, -1, 0, -4.37114e-08, -80, 6, 0)
+
+[node name="Collision" type="CollisionShape3D" parent="EnvironmentGeometry/BoundaryWalls/Wall_West"]
+shape = SubResource("BoxShape3D_Wall")

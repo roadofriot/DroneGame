@@ -1,0 +1,80 @@
+{
+  "default_profile": "normal",
+  "drone_physical": {
+    "mass_kg": 1.25,
+    "arm_length_m": 0.22,
+    "max_total_thrust_n": 28.0,
+    "linear_drag_coefficient": 0.65,
+    "angular_damping": 4.5,
+    "ground_effect_altitude_m": 1.5,
+    "ground_effect_cushion_multiplier": 0.25,
+    "battery_capacity_mah": 3800.0,
+    "nominal_voltage_v": 15.2,
+    "idle_drain_amps": 0.8,
+    "max_thrust_drain_amps": 32.0
+  },
+  "profiles": {
+    "cine": {
+      "name": "Cinematic",
+      "max_tilt_deg": 14.0,
+      "max_climb_mps": 3.0,
+      "max_descent_mps": 2.5,
+      "max_yaw_rate_deg": 60.0,
+      "max_horizontal_speed_mps": 6.0,
+      "auto_level_strength": 8.0,
+      "altitude_hold": true,
+      "expo": 0.35,
+      "description": "Slow, buttery smooth movement with capped tilt for film-grade captures."
+    },
+    "normal": {
+      "name": "Normal",
+      "max_tilt_deg": 28.0,
+      "max_climb_mps": 6.0,
+      "max_descent_mps": 4.5,
+      "max_yaw_rate_deg": 120.0,
+      "max_horizontal_speed_mps": 14.0,
+      "auto_level_strength": 6.0,
+      "altitude_hold": true,
+      "expo": 0.25,
+      "description": "Balanced flight model with stable auto-leveling and altitude hold."
+    },
+    "sport": {
+      "name": "Sport",
+      "max_tilt_deg": 52.0,
+      "max_climb_mps": 10.0,
+      "max_descent_mps": 8.0,
+      "max_yaw_rate_deg": 220.0,
+      "max_horizontal_speed_mps": 25.0,
+      "auto_level_strength": 4.5,
+      "altitude_hold": false,
+      "expo": 0.2,
+      "description": "High agility, steep banking, and high top speed for experienced pilots."
+    },
+    "arcade": {
+      "name": "Arcade",
+      "max_tilt_deg": 40.0,
+      "max_climb_mps": 8.0,
+      "max_descent_mps": 6.0,
+      "max_yaw_rate_deg": 180.0,
+      "max_horizontal_speed_mps": 18.0,
+      "auto_level_strength": 7.0,
+      "altitude_hold": true,
+      "stunts_enabled": true,
+      "expo": 0.15,
+      "description": "Forgiving physics, assisted braking, coin magnet, and aerobatic stunt keys."
+    },
+    "acro": {
+      "name": "Acro / Manual",
+      "max_tilt_deg": 180.0,
+      "max_climb_mps": 14.0,
+      "max_descent_mps": 12.0,
+      "max_yaw_rate_deg": 450.0,
+      "max_horizontal_speed_mps": 35.0,
+      "auto_level_strength": 0.0,
+      "altitude_hold": false,
+      "stunts_enabled": true,
+      "expo": 0.1,
+      "description": "Pure manual rate control with zero auto-level. Inverted flight enabled."
+    }
+  }
+}

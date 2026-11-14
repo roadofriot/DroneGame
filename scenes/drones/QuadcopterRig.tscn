@@ -1,0 +1,244 @@
+[gd_scene load_steps=18 format=3 uid="uid://c3q4m8r8d1p01"]
+
+[ext_resource type="Script" path="res://scripts/flight/FlightPhysics.gd" id="1_physics"]
+[ext_resource type="Script" path="res://scripts/flight/DroneRig.gd" id="2_rig"]
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_body"]
+size = Vector3(0.48, 0.12, 0.48)
+
+[sub_resource type="StandardMaterial3D" id="Mat_GraphiteFrame"]
+albedo_color = Color(0.12, 0.14, 0.16, 1)
+metallic = 0.85
+roughness = 0.28
+
+[sub_resource type="StandardMaterial3D" id="Mat_CyanAccent"]
+albedo_color = Color(0.05, 0.65, 0.95, 1)
+metallic = 0.7
+roughness = 0.35
+emission_enabled = true
+emission = Color(0.02, 0.4, 0.8, 1)
+emission_energy_multiplier = 0.8
+
+[sub_resource type="StandardMaterial3D" id="Mat_RotorDisc"]
+transparency = 1
+albedo_color = Color(0.85, 0.95, 1, 0.35)
+metallic = 0.1
+roughness = 0.1
+
+[sub_resource type="StandardMaterial3D" id="Mat_LedGreen"]
+albedo_color = Color(0.1, 1, 0.2, 1)
+emission_enabled = true
+emission = Color(0.1, 1, 0.2, 1)
+emission_energy_multiplier = 4.0
+
+[sub_resource type="StandardMaterial3D" id="Mat_LedRed"]
+albedo_color = Color(1, 0.1, 0.1, 1)
+emission_enabled = true
+emission = Color(1, 0.1, 0.1, 1)
+emission_energy_multiplier = 4.0
+
+[sub_resource type="BoxMesh" id="BoxMesh_Fuselage"]
+material = SubResource("Mat_GraphiteFrame")
+size = Vector3(0.14, 0.06, 0.22)
+
+[sub_resource type="PrismMesh" id="PrismMesh_Canopy"]
+material = SubResource("Mat_CyanAccent")
+left_to_right = 0.5
+size = Vector3(0.12, 0.045, 0.18)
+
+[sub_resource type="BoxMesh" id="BoxMesh_Arm"]
+material = SubResource("Mat_GraphiteFrame")
+size = Vector3(0.03, 0.015, 0.22)
+
+[sub_resource type="CylinderMesh" id="CylinderMesh_Motor"]
+material = SubResource("Mat_GraphiteFrame")
+top_radius = 0.022
+bottom_radius = 0.022
+height = 0.03
+
+[sub_resource type="TorusMesh" id="TorusMesh_Guard"]
+material = SubResource("Mat_CyanAccent")
+inner_radius = 0.075
+outer_radius = 0.088
+
+[sub_resource type="BoxMesh" id="BoxMesh_PropellerBlade"]
+material = SubResource("Mat_RotorDisc")
+size = Vector3(0.15, 0.003, 0.018)
+
+[sub_resource type="SphereMesh" id="SphereMesh_Led"]
+radius = 0.01
+height = 0.02
+
+[sub_resource type="SphereMesh" id="SphereMesh_GimbalBall"]
+material = SubResource("Mat_GraphiteFrame")
+radius = 0.025
+height = 0.05
+
+[sub_resource type="CylinderMesh" id="CylinderMesh_Lens"]
+material = SubResource("Mat_CyanAccent")
+top_radius = 0.012
+bottom_radius = 0.014
+height = 0.02
+
+[node name="Quadcopter" type="RigidBody3D" node_paths=PackedStringArray("raycast_ground")]
+mass = 1.25
+continuous_cd = true
+contact_monitor = true
+max_contacts_reported = 4
+script = ExtResource("1_physics")
+raycast_ground = NodePath("GroundRayCast")
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="."]
+shape = SubResource("BoxShape3D_body")
+
+[node name="GroundRayCast" type="RayCast3D" parent="."]
+target_position = Vector3(0, -50, 0)
+
+[node name="DroneRig" type="Node3D" parent="." node_paths=PackedStringArray("flight_physics", "gimbal_pitch_mount", "gimbal_camera", "prop_fl", "prop_fr", "prop_rl", "prop_rr")]
+script = ExtResource("2_rig")
+flight_physics = NodePath("..")
+gimbal_pitch_mount = NodePath("Fuselage/GimbalMount/GimbalPitch")
+gimbal_camera = NodePath("Fuselage/GimbalMount/GimbalPitch/FPVCamera")
+prop_fl = NodePath("Arm_FL/PropFL")
+prop_fr = NodePath("Arm_FR/PropFR")
+prop_rl = NodePath("Arm_RL/PropRL")
+prop_rr = NodePath("Arm_RR/PropRR")
+
+[node name="Fuselage" type="MeshInstance3D" parent="DroneRig"]
+mesh = SubResource("BoxMesh_Fuselage")
+
+[node name="Canopy" type="MeshInstance3D" parent="DroneRig/Fuselage"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.045, 0)
+mesh = SubResource("PrismMesh_Canopy")
+
+[node name="GimbalMount" type="Node3D" parent="DroneRig/Fuselage"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.04, -0.08)
+
+[node name="GimbalBall" type="MeshInstance3D" parent="DroneRig/Fuselage/GimbalMount"]
+mesh = SubResource("SphereMesh_GimbalBall")
+
+[node name="GimbalPitch" type="Node3D" parent="DroneRig/Fuselage/GimbalMount"]
+
+[node name="Lens" type="MeshInstance3D" parent="DroneRig/Fuselage/GimbalMount/GimbalPitch"]
+transform = Transform3D(1, 0, 0, 0, -4.37114e-08, -1, 0, 1, -4.37114e-08, 0, 0, -0.02)
+mesh = SubResource("CylinderMesh_Lens")
+
+[node name="FPVCamera" type="Camera3D" parent="DroneRig/Fuselage/GimbalMount/GimbalPitch"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, -0.04)
+fov = 85.0
+
+[node name="LED_FL" type="MeshInstance3D" parent="DroneRig"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.06, 0, -0.11)
+material_override = SubResource("Mat_LedGreen")
+mesh = SubResource("SphereMesh_Led")
+
+[node name="LED_FR" type="MeshInstance3D" parent="DroneRig"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.06, 0, -0.11)
+material_override = SubResource("Mat_LedGreen")
+mesh = SubResource("SphereMesh_Led")
+
+[node name="LED_RL" type="MeshInstance3D" parent="DroneRig"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.06, 0, 0.11)
+material_override = SubResource("Mat_LedRed")
+mesh = SubResource("SphereMesh_Led")
+
+[node name="LED_RR" type="MeshInstance3D" parent="DroneRig"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.06, 0, 0.11)
+material_override = SubResource("Mat_LedRed")
+mesh = SubResource("SphereMesh_Led")
+
+[node name="Arm_FL" type="Node3D" parent="DroneRig"]
+transform = Transform3D(0.707107, 0, -0.707107, 0, 1, 0, 0.707107, 0, 0.707107, -0.11, 0, -0.11)
+
+[node name="ArmMesh" type="MeshInstance3D" parent="DroneRig/Arm_FL"]
+mesh = SubResource("BoxMesh_Arm")
+
+[node name="Motor" type="MeshInstance3D" parent="DroneRig/Arm_FL"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.015, -0.1)
+mesh = SubResource("CylinderMesh_Motor")
+
+[node name="Guard" type="MeshInstance3D" parent="DroneRig/Arm_FL"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.015, -0.1)
+mesh = SubResource("TorusMesh_Guard")
+
+[node name="PropFL" type="Node3D" parent="DroneRig/Arm_FL"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.035, -0.1)
+
+[node name="Blade1" type="MeshInstance3D" parent="DroneRig/Arm_FL/PropFL"]
+mesh = SubResource("BoxMesh_PropellerBlade")
+
+[node name="Blade2" type="MeshInstance3D" parent="DroneRig/Arm_FL/PropFL"]
+transform = Transform3D(-4.37114e-08, 0, 1, 0, 1, 0, -1, 0, -4.37114e-08, 0, 0, 0)
+mesh = SubResource("BoxMesh_PropellerBlade")
+
+[node name="Arm_FR" type="Node3D" parent="DroneRig"]
+transform = Transform3D(0.707107, 0, 0.707107, 0, 1, 0, -0.707107, 0, 0.707107, 0.11, 0, -0.11)
+
+[node name="ArmMesh" type="MeshInstance3D" parent="DroneRig/Arm_FR"]
+mesh = SubResource("BoxMesh_Arm")
+
+[node name="Motor" type="MeshInstance3D" parent="DroneRig/Arm_FR"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.015, -0.1)
+mesh = SubResource("CylinderMesh_Motor")
+
+[node name="Guard" type="MeshInstance3D" parent="DroneRig/Arm_FR"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.015, -0.1)
+mesh = SubResource("TorusMesh_Guard")
+
+[node name="PropFR" type="Node3D" parent="DroneRig/Arm_FR"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.035, -0.1)
+
+[node name="Blade1" type="MeshInstance3D" parent="DroneRig/Arm_FR/PropFR"]
+mesh = SubResource("BoxMesh_PropellerBlade")
+
+[node name="Blade2" type="MeshInstance3D" parent="DroneRig/Arm_FR/PropFR"]
+transform = Transform3D(-4.37114e-08, 0, 1, 0, 1, 0, -1, 0, -4.37114e-08, 0, 0, 0)
+mesh = SubResource("BoxMesh_PropellerBlade")
+
+[node name="Arm_RL" type="Node3D" parent="DroneRig"]
+transform = Transform3D(-0.707107, 0, -0.707107, 0, 1, 0, 0.707107, 0, -0.707107, -0.11, 0, 0.11)
+
+[node name="ArmMesh" type="MeshInstance3D" parent="DroneRig/Arm_RL"]
+mesh = SubResource("BoxMesh_Arm")
+
+[node name="Motor" type="MeshInstance3D" parent="DroneRig/Arm_RL"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.015, -0.1)
+mesh = SubResource("CylinderMesh_Motor")
+
+[node name="Guard" type="MeshInstance3D" parent="DroneRig/Arm_RL"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.015, -0.1)
+mesh = SubResource("TorusMesh_Guard")
+
+[node name="PropRL" type="Node3D" parent="DroneRig/Arm_RL"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.035, -0.1)
+
+[node name="Blade1" type="MeshInstance3D" parent="DroneRig/Arm_RL/PropRL"]
+mesh = SubResource("BoxMesh_PropellerBlade")
+
+[node name="Blade2" type="MeshInstance3D" parent="DroneRig/Arm_RL/PropRL"]
+transform = Transform3D(-4.37114e-08, 0, 1, 0, 1, 0, -1, 0, -4.37114e-08, 0, 0, 0)
+mesh = SubResource("BoxMesh_PropellerBlade")
+
+[node name="Arm_RR" type="Node3D" parent="DroneRig"]
+transform = Transform3D(-0.707107, 0, 0.707107, 0, 1, 0, -0.707107, 0, -0.707107, 0.11, 0, 0.11)
+
+[node name="ArmMesh" type="MeshInstance3D" parent="DroneRig/Arm_RR"]
+mesh = SubResource("BoxMesh_Arm")
+
+[node name="Motor" type="MeshInstance3D" parent="DroneRig/Arm_RR"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.015, -0.1)
+mesh = SubResource("CylinderMesh_Motor")
+
+[node name="Guard" type="MeshInstance3D" parent="DroneRig/Arm_RR"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.015, -0.1)
+mesh = SubResource("TorusMesh_Guard")
+
+[node name="PropRR" type="Node3D" parent="DroneRig/Arm_RR"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.035, -0.1)
+
+[node name="Blade1" type="MeshInstance3D" parent="DroneRig/Arm_RR/PropRR"]
+mesh = SubResource("BoxMesh_PropellerBlade")
+
+[node name="Blade2" type="MeshInstance3D" parent="DroneRig/Arm_RR/PropRR"]
+transform = Transform3D(-4.37114e-08, 0, 1, 0, 1, 0, -1, 0, -4.37114e-08, 0, 0, 0)
+mesh = SubResource("BoxMesh_PropellerBlade")

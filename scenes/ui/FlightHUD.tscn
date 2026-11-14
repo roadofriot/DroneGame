@@ -1,0 +1,239 @@
+[gd_scene load_steps=7 format=3 uid="uid://b0yqvdku6s201"]
+
+[ext_resource type="Script" path="res://scripts/ui/FlightHUD.gd" id="1_hud"]
+[ext_resource type="Script" path="res://scripts/ui/VirtualJoystick.gd" id="2_joystick"]
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_TopBar"]
+bg_color = Color(0.06, 0.09, 0.13, 0.82)
+border_width_bottom = 2
+border_color = Color(0.18, 0.65, 0.9, 0.6)
+corner_radius_bottom_right = 8
+corner_radius_bottom_left = 8
+content_margin_left = 16.0
+content_margin_top = 8.0
+content_margin_right = 16.0
+content_margin_bottom = 8.0
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_Pill"]
+bg_color = Color(0.12, 0.16, 0.22, 0.85)
+corner_radius_top_left = 4
+corner_radius_top_right = 4
+corner_radius_bottom_right = 4
+corner_radius_bottom_left = 4
+content_margin_left = 10.0
+content_margin_top = 4.0
+content_margin_right = 10.0
+content_margin_bottom = 4.0
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_BtnNormal"]
+bg_color = Color(0.1, 0.35, 0.55, 0.85)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.25, 0.8, 1, 0.9)
+corner_radius_top_left = 6
+corner_radius_top_right = 6
+corner_radius_bottom_right = 6
+corner_radius_bottom_left = 6
+content_margin_left = 14.0
+content_margin_top = 8.0
+content_margin_right = 14.0
+content_margin_bottom = 8.0
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_Warning"]
+bg_color = Color(0.85, 0.15, 0.15, 0.9)
+corner_radius_top_left = 6
+corner_radius_top_right = 6
+corner_radius_bottom_right = 6
+corner_radius_bottom_left = 6
+content_margin_left = 16.0
+content_margin_top = 6.0
+content_margin_right = 16.0
+content_margin_bottom = 6.0
+
+[node name="FlightHUD" type="CanvasLayer"]
+script = ExtResource("1_hud")
+
+[node name="TopBar" type="PanelContainer" parent="."]
+anchors_preset = 10
+anchor_right = 1.0
+offset_bottom = 48.0
+grow_horizontal = 2
+theme_override_styles/panel = SubResource("StyleBoxFlat_TopBar")
+
+[node name="HBox" type="HBoxContainer" parent="TopBar"]
+layout_mode = 2
+theme_override_constants/separation = 12
+alignment = 1
+
+[node name="ModePill" type="PanelContainer" parent="TopBar/HBox"]
+layout_mode = 2
+theme_override_styles/panel = SubResource("StyleBoxFlat_Pill")
+
+[node name="LabelMode" type="Label" parent="TopBar/HBox/ModePill"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.2, 0.85, 1, 1)
+text = "NORMAL"
+
+[node name="BatteryPill" type="PanelContainer" parent="TopBar/HBox"]
+layout_mode = 2
+theme_override_styles/panel = SubResource("StyleBoxFlat_Pill")
+
+[node name="LabelBattery" type="Label" parent="TopBar/HBox/BatteryPill"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.2, 0.95, 0.4, 1)
+text = "100% (15.2V)"
+
+[node name="SpeedPill" type="PanelContainer" parent="TopBar/HBox"]
+layout_mode = 2
+theme_override_styles/panel = SubResource("StyleBoxFlat_Pill")
+
+[node name="LabelSpeed" type="Label" parent="TopBar/HBox/SpeedPill"]
+layout_mode = 2
+text = "SPD: 0.0 m/s"
+
+[node name="AltPill" type="PanelContainer" parent="TopBar/HBox"]
+layout_mode = 2
+theme_override_styles/panel = SubResource("StyleBoxFlat_Pill")
+
+[node name="LabelAlt" type="Label" parent="TopBar/HBox/AltPill"]
+layout_mode = 2
+text = "ALT: 0.0 m"
+
+[node name="ClimbPill" type="PanelContainer" parent="TopBar/HBox"]
+layout_mode = 2
+theme_override_styles/panel = SubResource("StyleBoxFlat_Pill")
+
+[node name="LabelClimb" type="Label" parent="TopBar/HBox/ClimbPill"]
+layout_mode = 2
+text = "V/S: 0.0 m/s"
+
+[node name="HeadingPill" type="PanelContainer" parent="TopBar/HBox"]
+layout_mode = 2
+theme_override_styles/panel = SubResource("StyleBoxFlat_Pill")
+
+[node name="LabelHeading" type="Label" parent="TopBar/HBox/HeadingPill"]
+layout_mode = 2
+text = "HDG: 000° N"
+
+[node name="CenterOverlay" type="Control" parent="."]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+
+[node name="StateBanner" type="Label" parent="CenterOverlay"]
+visible = false
+layout_mode = 1
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -200.0
+offset_top = -140.0
+offset_right = 200.0
+offset_bottom = -100.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_colors/font_color = Color(1, 0.9, 0.2, 1)
+theme_override_font_sizes/font_size = 20
+text = "READY FOR TAKEOFF"
+horizontal_alignment = 1
+
+[node name="ProximityWarning" type="Label" parent="CenterOverlay"]
+visible = false
+layout_mode = 1
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -160.0
+offset_top = -80.0
+offset_right = 160.0
+offset_bottom = -45.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_styles/normal = SubResource("StyleBoxFlat_Warning")
+text = "⚠️ TERRAIN PROXIMITY"
+horizontal_alignment = 1
+
+[node name="LeftCluster" type="MarginContainer" parent="."]
+anchors_preset = 2
+anchor_top = 1.0
+anchor_bottom = 1.0
+offset_top = -220.0
+offset_right = 220.0
+grow_vertical = 0
+theme_override_constants/margin_left = 32
+theme_override_constants/margin_bottom = 32
+
+[node name="LeftJoystick" type="Control" parent="LeftCluster"]
+custom_minimum_size = Vector2(160, 160)
+layout_mode = 2
+script = ExtResource("2_joystick")
+
+[node name="RightCluster" type="MarginContainer" parent="."]
+anchors_preset = 3
+anchor_left = 1.0
+anchor_top = 1.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = -220.0
+offset_top = -220.0
+grow_horizontal = 0
+grow_vertical = 0
+theme_override_constants/margin_right = 32
+theme_override_constants/margin_bottom = 32
+
+[node name="RightJoystick" type="Control" parent="RightCluster"]
+custom_minimum_size = Vector2(160, 160)
+layout_mode = 2
+script = ExtResource("2_joystick")
+
+[node name="BottomBar" type="MarginContainer" parent="."]
+anchors_preset = 7
+anchor_left = 0.5
+anchor_top = 1.0
+anchor_right = 0.5
+anchor_bottom = 1.0
+offset_left = -250.0
+offset_top = -75.0
+offset_right = 250.0
+grow_horizontal = 2
+grow_vertical = 0
+theme_override_constants/margin_bottom = 24
+
+[node name="HBox" type="HBoxContainer" parent="BottomBar"]
+layout_mode = 2
+theme_override_constants/separation = 16
+alignment = 1
+
+[node name="BtnTakeoffLand" type="Button" parent="BottomBar/HBox"]
+custom_minimum_size = Vector2(110, 42)
+layout_mode = 2
+theme_override_styles/normal = SubResource("StyleBoxFlat_BtnNormal")
+text = "TAKEOFF"
+
+[node name="BtnCamera" type="Button" parent="BottomBar/HBox"]
+custom_minimum_size = Vector2(90, 42)
+layout_mode = 2
+theme_override_styles/normal = SubResource("StyleBoxFlat_BtnNormal")
+text = "CAM (C)"
+
+[node name="BtnMode" type="Button" parent="BottomBar/HBox"]
+custom_minimum_size = Vector2(90, 42)
+layout_mode = 2
+theme_override_styles/normal = SubResource("StyleBoxFlat_BtnNormal")
+text = "MODE (M)"
+
+[node name="BtnReset" type="Button" parent="BottomBar/HBox"]
+custom_minimum_size = Vector2(90, 42)
+layout_mode = 2
+theme_override_styles/normal = SubResource("StyleBoxFlat_BtnNormal")
+text = "RESET (R)"
