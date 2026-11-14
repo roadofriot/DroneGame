@@ -1,9 +1,12 @@
 class_name FlightPhysics
 extends RigidBody3D
 
-## FlightPhysics: Professional 60Hz Quadcopter Flight Simulation & State Machine.
-## Implements 4-motor thrust dynamics, auto-level PID, ground effect, battery consumption,
-## automated Take-Off sequence, Landing, Return-To-Home (RTH), and 5 distinct flight modes.
+## FlightPhysics: Physically consistent Quadcopter Flight Simulation & State Machine.
+## Integrates FlightController (pure-logic RefCounted) for attitude P-loop,
+## collective altitude hold, and differential X-quad motor mixing.
+
+const ControlFrame = preload("res://scripts/input/ControlFrame.gd")
+const FlightController = preload("res://scripts/flight/FlightController.gd")
 
 signal telemetry_updated(data: Dictionary)
 signal flight_mode_changed(mode_name: String)
@@ -46,6 +49,7 @@ var current_state: DroneState = DroneState.DISARMED
 var active_profile_name: String = "normal"
 var active_profile: Dictionary = {}
 var all_profiles: Dictionary = {}
+var flight_controller: FlightController = null
 
 # Motor RPMs [0.0 .. 1.0] for FL, FR, RL, RR
 var motor_rpms: Array[float] = [0.0, 0.0, 0.0, 0.0]
@@ -90,6 +94,7 @@ var roll_pid_d: float = 2.8
 var yaw_rate_p: float = 4.2
 
 func _init() -> void:
+	flight_controller = FlightController.new()
 	_load_profiles()
 
 func _ready() -> void:
@@ -183,9 +188,12 @@ func _load_profiles() -> void:
 		var json = JSON.new()
 		if json.parse(json_text) == OK:
 			var data = json.data
-			if data is Dictionary and data.has("profiles"):
-				for k in data["profiles"].keys():
-					all_profiles[k] = data["profiles"][k]
+			if data is Dictionary:
+				if data.has("drone_physical"):
+					all_profiles["drone_physical"] = data["drone_physical"]
+				if data.has("profiles"):
+					for k in data["profiles"].keys():
+						all_profiles[k] = data["profiles"][k]
 
 func set_flight_profile(profile_name: String) -> void:
 	if all_profiles.has(profile_name):
@@ -193,6 +201,14 @@ func set_flight_profile(profile_name: String) -> void:
 		active_profile = all_profiles[profile_name]
 		pitch_pid_p = active_profile.get("auto_level_strength", 6.0)
 		roll_pid_p = pitch_pid_p
+		if flight_controller:
+			var phys_data = all_profiles.get("drone_physical", {
+				"mass_kg": drone_mass,
+				"arm_length_m": arm_length,
+				"max_total_thrust_n": max_thrust_per_motor * 4.0,
+				"max_motor_thrust_n": max_thrust_per_motor
+			})
+			flight_controller.configure(active_profile, phys_data)
 		flight_mode_changed.emit(active_profile.get("name", profile_name.capitalize()))
 
 # --- Physics Process Loop (Fixed 60Hz Timestep) ---
@@ -396,87 +412,25 @@ func _process_flying(delta: float) -> void:
 		apply_central_force(push_force)
 		flight_boundary_reached.emit("GEOFENCE_RADIUS")
 
-	var hover_thrust = (drone_mass * 9.8) / (4.0 * max_thrust_per_motor)
-	var base_thrust: float = hover_thrust
-
-	# Station-keeping Altitude Hold when vertical stick is neutral
-	if active_profile.get("altitude_hold", true):
-		if abs(in_throttle) < 0.04:
-			if not has_flight_altitude_lock:
-				held_flight_altitude = clampf(altitude_agl, 0.4, max_flight_altitude)
-				has_flight_altitude_lock = true
-			var alt_err = held_flight_altitude - altitude_agl
-			var vert_damping = linear_velocity.y * 0.40
-			base_thrust = clampf(hover_thrust + (alt_err * 0.22) - vert_damping, 0.15, 0.88)
-		else:
-			has_flight_altitude_lock = false
-			held_flight_altitude = altitude_agl
-			base_thrust = hover_thrust + (in_throttle * 0.45)
-	else:
-		base_thrust = hover_thrust + (in_throttle * 0.45)
-
-	# Tilt compensation: when tilted, increase thrust to maintain altitude
-	var cur_basis_tilt = global_transform.basis.orthonormalized() if (is_inside_tree() and is_node_ready()) else transform.basis.orthonormalized()
-	var tilt_comp = 1.0 / maxf(cur_basis_tilt.y.dot(Vector3.UP), 0.35)
-	base_thrust = clampf(base_thrust * tilt_comp, 0.0, 1.0)
-
-	# In Acro mode, direct rate control without auto-level
-	if active_profile_name == "acro":
-		_calculate_acro_rpms(base_thrust, in_pitch, in_roll, in_yaw, delta)
-	else:
-		# Auto-level mode: Pitch/Roll stick commands target angles
-		var max_tilt = active_profile.get("max_tilt_deg", 28.0)
-		var target_pitch = in_pitch * max_tilt
-		var target_roll = in_roll * max_tilt
-		var max_yaw_rate = active_profile.get("max_yaw_rate_deg", 120.0)
-		var target_yaw_rate = in_yaw * deg_to_rad(max_yaw_rate)
-
-		_calculate_auto_level_rpms(base_thrust, target_pitch, target_roll, target_yaw_rate, delta)
-
-	# --- True 3D Physical Translation & Aerodynamic Propulsion ---
 	var cur_basis = global_transform.basis.orthonormalized() if (is_inside_tree() and is_node_ready()) else transform.basis.orthonormalized()
-	var forward_flat = -Vector3(cur_basis.z.x, 0.0, cur_basis.z.z)
-	if forward_flat.length_squared() > 0.0001:
-		forward_flat = forward_flat.normalized()
-	else:
-		forward_flat = Vector3(0.0, 0.0, -1.0)
 
-	var right_flat = Vector3(cur_basis.x.x, 0.0, cur_basis.x.z)
-	if right_flat.length_squared() > 0.0001:
-		right_flat = right_flat.normalized()
+	# Fetch unified ControlFrame
+	var frame: ControlFrame = null
+	if input_router and input_router.current_frame:
+		frame = input_router.current_frame.duplicate_frame()
+		if in_throttle != 0.0: frame.throttle = in_throttle
+		if in_yaw != 0.0: frame.yaw = in_yaw
+		if in_pitch != 0.0: frame.pitch = in_pitch
+		if in_roll != 0.0: frame.roll = in_roll
 	else:
-		right_flat = Vector3(1.0, 0.0, 0.0)
+		frame = ControlFrame.new(in_throttle, in_yaw, in_pitch, in_roll)
 
-	var max_h_speed = active_profile.get("max_horizontal_speed_mps", 14.0)
-	var cur_h_vel = Vector3(linear_velocity.x, 0.0, linear_velocity.z)
+	if altitude_agl >= max_flight_altitude and frame.throttle > 0.0:
+		frame.throttle = 0.0
 
-	if abs(in_pitch) > 0.03 or abs(in_roll) > 0.03:
-		# Pilot commanding horizontal translation
-		var target_h_vel = (forward_flat * in_pitch + right_flat * in_roll) * max_h_speed
-		var h_force = (target_h_vel - cur_h_vel) * 5.5 * drone_mass
-		if h_force.is_finite():
-			apply_central_force(h_force)
-	else:
-		# Rock-solid GPS-style horizontal braking when sticks centered
-		if cur_h_vel.length() > 0.01:
-			var brake_force = -cur_h_vel * 4.6 * drone_mass
-			if brake_force.is_finite():
-				apply_central_force(brake_force)
-		if cur_h_vel.length() < 0.08:
-			linear_velocity.x = move_toward(linear_velocity.x, 0.0, 12.0 * delta)
-			linear_velocity.z = move_toward(linear_velocity.z, 0.0, 12.0 * delta)
-		angular_velocity.x = move_toward(angular_velocity.x, 0.0, 14.0 * delta)
-		angular_velocity.z = move_toward(angular_velocity.z, 0.0, 14.0 * delta)
-
-	# Direct yaw angular response
-	if abs(in_yaw) > 0.03:
-		var max_yaw_rate_rad = deg_to_rad(active_profile.get("max_yaw_rate_deg", 120.0))
-		var target_yaw_w = in_yaw * max_yaw_rate_rad
-		var cur_yaw_w = angular_velocity.y
-		var yaw_torque_impulse = (target_yaw_w - cur_yaw_w) * 4.5 * (drone_mass * 0.045)
-		apply_torque(Vector3(0.0, yaw_torque_impulse, 0.0))
-	else:
-		angular_velocity.y = move_toward(angular_velocity.y, 0.0, 12.0 * delta)
+	var out = flight_controller.step(cur_basis, angular_velocity, linear_velocity, frame, {}, delta)
+	for i in range(4):
+		target_motor_rpms[i] = clampf(out.motors[i] / max_thrust_per_motor, 0.0, 1.0)
 
 func _process_landing(delta: float) -> void:
 	# 1. Active horizontal braking
@@ -719,7 +673,7 @@ func _apply_motor_forces(delta: float) -> void:
 	var roll_torque = roll_diff * max_thrust_per_motor * arm_length
 
 	var yaw_diff = (motor_rpms[0] + motor_rpms[3]) - (motor_rpms[1] + motor_rpms[2])
-	var yaw_torque = -yaw_diff * max_thrust_per_motor * 0.12
+	var yaw_torque = yaw_diff * max_thrust_per_motor * 0.016
 
 	var motor_torque_local = Vector3(pitch_torque, yaw_torque, roll_torque)
 	var motor_torque_world = cur_basis * motor_torque_local

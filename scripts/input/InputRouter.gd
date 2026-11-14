@@ -33,10 +33,22 @@ var last_input_source: InputSource = InputSource.NONE
 var current_frame: RefCounted = null
 
 # Direct property accessors for backward compatibility
-var throttle: float = 0.0
-var yaw: float = 0.0
-var pitch: float = 0.0
-var roll: float = 0.0
+var throttle: float = 0.0:
+	set(val):
+		throttle = val
+		if current_frame: current_frame.throttle = val
+var yaw: float = 0.0:
+	set(val):
+		yaw = val
+		if current_frame: current_frame.yaw = val
+var pitch: float = 0.0:
+	set(val):
+		pitch = val
+		if current_frame: current_frame.pitch = val
+var roll: float = 0.0:
+	set(val):
+		roll = val
+		if current_frame: current_frame.roll = val
 
 # Virtual stick inputs (from on-screen HUD)
 var virtual_throttle: float = 0.0
