@@ -80,6 +80,11 @@ theme_override_colors/font_color = Color(0.2, 0.85, 1, 1)
 theme_override_font_sizes/font_size = 20
 text = "WORLD EXPLORATION CATALOGUE"
 
+[node name="BtnExplorer" type="Button" parent="Card/VBox/HBoxTop"]
+custom_minimum_size = Vector2(170, 32)
+layout_mode = 2
+text = "REAL LOCATION MAPS"
+
 [node name="BtnClose" type="Button" parent="Card/VBox/HBoxTop"]
 custom_minimum_size = Vector2(80, 32)
 layout_mode = 2

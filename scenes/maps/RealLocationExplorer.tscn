@@ -1,0 +1,176 @@
+[gd_scene load_steps=5 format=3 uid="uid://c8realloc01"]
+
+[ext_resource type="Script" path="res://scripts/maps/RealLocationExplorer.gd" id="1_explorer"]
+[ext_resource type="Script" path="res://scripts/maps/MapCanvas2D.gd" id="2_canvas"]
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_Bg"]
+bg_color = Color(0.05, 0.07, 0.1, 0.96)
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_Card"]
+bg_color = Color(0.08, 0.12, 0.18, 0.9)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.18, 0.45, 0.7, 0.6)
+corner_radius_top_left = 6
+corner_radius_top_right = 6
+corner_radius_bottom_right = 6
+corner_radius_bottom_left = 6
+content_margin_left = 12.0
+content_margin_top = 12.0
+content_margin_right = 12.0
+content_margin_bottom = 12.0
+
+[node name="RealLocationExplorer" type="Control"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("1_explorer")
+
+[node name="Bg" type="Panel" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_styles/panel = SubResource("StyleBoxFlat_Bg")
+
+[node name="MainLayout" type="VBoxContainer" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_constants/separation = 8
+
+[node name="TopBar" type="MarginContainer" parent="MainLayout"]
+layout_mode = 2
+theme_override_constants/margin_left = 16
+theme_override_constants/margin_top = 12
+theme_override_constants/margin_right = 16
+theme_override_constants/margin_bottom = 6
+
+[node name="HBoxSearch" type="HBoxContainer" parent="MainLayout/TopBar"]
+layout_mode = 2
+theme_override_constants/separation = 12
+
+[node name="LabelHeader" type="Label" parent="MainLayout/TopBar/HBoxSearch"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.2, 0.8, 1, 1)
+text = "REAL LOCATION EXPLORER"
+
+[node name="InputSearch" type="LineEdit" parent="MainLayout/TopBar/HBoxSearch"]
+custom_minimum_size = Vector2(360, 38)
+layout_mode = 2
+size_flags_horizontal = 3
+placeholder_text = "Search location (Butwal, Pokhara, Kathmandu, Tokyo) or lat, lon..."
+
+[node name="BtnSearch" type="Button" parent="MainLayout/TopBar/HBoxSearch"]
+custom_minimum_size = Vector2(90, 38)
+layout_mode = 2
+text = "SEARCH"
+
+[node name="BtnGPS" type="Button" parent="MainLayout/TopBar/HBoxSearch"]
+custom_minimum_size = Vector2(110, 38)
+layout_mode = 2
+text = "MY GPS"
+
+[node name="BtnClose" type="Button" parent="MainLayout/TopBar/HBoxSearch"]
+custom_minimum_size = Vector2(80, 38)
+layout_mode = 2
+text = "CLOSE"
+
+[node name="Body" type="HBoxContainer" parent="MainLayout"]
+layout_mode = 2
+size_flags_vertical = 3
+theme_override_constants/separation = 12
+
+[node name="LeftPanel" type="PanelContainer" parent="MainLayout/Body"]
+custom_minimum_size = Vector2(280, 0)
+layout_mode = 2
+theme_override_styles/panel = SubResource("StyleBoxFlat_Card")
+
+[node name="ScrollResults" type="ScrollContainer" parent="MainLayout/Body/LeftPanel"]
+layout_mode = 2
+horizontal_scroll_mode = 0
+
+[node name="VBoxResults" type="VBoxContainer" parent="MainLayout/Body/LeftPanel/ScrollResults"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 6
+
+[node name="CenterPanel" type="PanelContainer" parent="MainLayout/Body"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_styles/panel = SubResource("StyleBoxFlat_Card")
+
+[node name="MapCanvas2D" type="Control" parent="MainLayout/Body/CenterPanel"]
+layout_mode = 2
+script = ExtResource("2_canvas")
+
+[node name="RightPanel" type="PanelContainer" parent="MainLayout/Body"]
+custom_minimum_size = Vector2(300, 0)
+layout_mode = 2
+theme_override_styles/panel = SubResource("StyleBoxFlat_Card")
+
+[node name="VBoxDetails" type="VBoxContainer" parent="MainLayout/Body/RightPanel"]
+layout_mode = 2
+theme_override_constants/separation = 10
+
+[node name="LabelTitle" type="Label" parent="MainLayout/Body/RightPanel/VBoxDetails"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.2, 0.85, 1, 1)
+text = "Butwal, Nepal"
+
+[node name="LabelCoords" type="Label" parent="MainLayout/Body/RightPanel/VBoxDetails"]
+layout_mode = 2
+text = "Coordinates: 27.7006° N, 83.4484° E"
+
+[node name="LabelElevation" type="Label" parent="MainLayout/Body/RightPanel/VBoxDetails"]
+layout_mode = 2
+text = "Regional Elevation: 150 m MSL"
+
+[node name="LabelDescription" type="Label" parent="MainLayout/Body/RightPanel/VBoxDetails"]
+layout_mode = 2
+autowrap_mode = 2
+text = "Historic commercial crossroads at the base of the Chure hills."
+
+[node name="HSeparator" type="HSeparator" parent="MainLayout/Body/RightPanel/VBoxDetails"]
+layout_mode = 2
+
+[node name="BtnFlyAuthored" type="Button" parent="MainLayout/Body/RightPanel/VBoxDetails"]
+custom_minimum_size = Vector2(0, 42)
+layout_mode = 2
+text = "FLY AUTHORED WORLD"
+
+[node name="BtnFlyApproximate" type="Button" parent="MainLayout/Body/RightPanel/VBoxDetails"]
+custom_minimum_size = Vector2(0, 42)
+layout_mode = 2
+text = "FLY APPROXIMATE WORLD"
+
+[node name="Spacer" type="Control" parent="MainLayout/Body/RightPanel/VBoxDetails"]
+layout_mode = 2
+size_flags_vertical = 3
+
+[node name="LabelAttribution" type="Label" parent="MainLayout/Body/RightPanel/VBoxDetails"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.55, 0.65, 0.75, 1)
+autowrap_mode = 2
+text = "Map data © OpenStreetMap contributors, ODbL 1.0"
+
+[node name="BottomBar" type="MarginContainer" parent="MainLayout"]
+layout_mode = 2
+theme_override_constants/margin_left = 16
+theme_override_constants/margin_right = 16
+theme_override_constants/margin_bottom = 8
+
+[node name="LabelStatus" type="Label" parent="MainLayout/BottomBar"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.3, 0.9, 0.5, 1)
+text = "Real Location Explorer Ready — Offline Cartographic Database Active"

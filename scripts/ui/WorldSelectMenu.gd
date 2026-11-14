@@ -4,12 +4,14 @@ extends Control
 ## WorldSelectMenu: UI Screen to inspect and select unlocked worlds from the catalogue.
 
 signal world_selected(world_id: String)
+signal real_location_explorer_requested
 signal menu_closed
 
 var progression_service: ProgressionService
 
 @onready var grid_container: HBoxContainer = $Card/VBox/ScrollContainer/HBoxWorlds
 @onready var btn_close: Button = $Card/VBox/HBoxTop/BtnClose
+@onready var btn_explorer: Button = get_node_or_null("Card/VBox/HBoxTop/BtnExplorer")
 
 func _ready() -> void:
 	visible = false
@@ -17,6 +19,11 @@ func _ready() -> void:
 		btn_close.pressed.connect(func():
 			visible = false
 			menu_closed.emit()
+		)
+	if btn_explorer:
+		btn_explorer.pressed.connect(func():
+			visible = false
+			real_location_explorer_requested.emit()
 		)
 	if not progression_service:
 		progression_service = ProgressionService.new()

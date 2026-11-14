@@ -1,0 +1,161 @@
+[gd_scene load_steps=22 format=3 uid="uid://c7locprocedural01"]
+
+[ext_resource type="Script" path="res://scripts/world/ProceduralLocationWorld.gd" id="1_world"]
+[ext_resource type="Script" path="res://scripts/input/InputRouter.gd" id="2_input"]
+[ext_resource type="PackedScene" uid="uid://c3q4m8r8d1p01" path="res://scenes/drones/QuadcopterRig.tscn" id="3_drone"]
+[ext_resource type="Script" path="res://scripts/camera/FlightCameraDirector.gd" id="4_cam_director"]
+[ext_resource type="PackedScene" uid="uid://b0yqvdku6s201" path="res://scenes/ui/FlightHUD.tscn" id="5_hud"]
+[ext_resource type="PackedScene" uid="uid://b2gate8s1p01" path="res://scenes/missions/MissionGate.tscn" id="6_gate"]
+[ext_resource type="PackedScene" uid="uid://d1k3m4coin01" path="res://scenes/collectibles/CollectibleCoin.tscn" id="7_coin"]
+[ext_resource type="PackedScene" uid="uid://d2missonlay01" path="res://scenes/ui/MissionOverlay.tscn" id="8_overlay"]
+[ext_resource type="PackedScene" uid="uid://b3pause01" path="res://scenes/ui/PauseMenu.tscn" id="9_pause"]
+
+[sub_resource type="ProceduralSkyMaterial" id="ProceduralSkyMaterial_sky"]
+sky_top_color = Color(0.2, 0.45, 0.85, 1)
+sky_horizon_color = Color(0.7, 0.82, 0.95, 1)
+ground_bottom_color = Color(0.15, 0.18, 0.2, 1)
+ground_horizon_color = Color(0.7, 0.82, 0.95, 1)
+
+[sub_resource type="Sky" id="Sky_env"]
+sky_material = SubResource("ProceduralSkyMaterial_sky")
+
+[sub_resource type="Environment" id="Environment_world"]
+background_mode = 2
+sky = SubResource("Sky_env")
+ambient_light_source = 2
+ambient_light_color = Color(0.8, 0.85, 0.9, 1)
+ambient_light_energy = 0.4
+tonemap_mode = 2
+ssao_enabled = true
+glow_enabled = true
+glow_intensity = 0.5
+
+[sub_resource type="StandardMaterial3D" id="Mat_Terrain"]
+albedo_color = Color(0.22, 0.38, 0.25, 1)
+roughness = 0.85
+
+[sub_resource type="PlaneMesh" id="PlaneMesh_Ground"]
+material = SubResource("Mat_Terrain")
+size = Vector2(240, 240)
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_Ground"]
+size = Vector3(240, 0.5, 240)
+
+[sub_resource type="StandardMaterial3D" id="Mat_Pad"]
+albedo_color = Color(0.2, 0.22, 0.25, 1)
+metallic = 0.2
+roughness = 0.6
+
+[sub_resource type="CylinderMesh" id="CylinderMesh_Pad"]
+material = SubResource("Mat_Pad")
+top_radius = 2.5
+bottom_radius = 2.5
+height = 0.08
+
+[sub_resource type="StandardMaterial3D" id="Mat_YellowMarking"]
+albedo_color = Color(0.95, 0.8, 0.1, 1)
+roughness = 0.4
+
+[sub_resource type="TorusMesh" id="TorusMesh_PadRing"]
+material = SubResource("Mat_YellowMarking")
+inner_radius = 2.2
+outer_radius = 2.4
+
+[sub_resource type="BoxMesh" id="BoxMesh_Marking"]
+material = SubResource("Mat_YellowMarking")
+size = Vector3(0.3, 0.02, 1.8)
+
+[node name="ProceduralLocationWorld" type="Node3D"]
+script = ExtResource("1_world")
+
+[node name="WorldEnvironment" type="WorldEnvironment" parent="."]
+environment = SubResource("Environment_world")
+
+[node name="DirectionalLight3D" type="DirectionalLight3D" parent="."]
+transform = Transform3D(0.866025, -0.353553, 0.353553, 0, 0.707107, 0.707107, -0.5, -0.612372, 0.612372, 0, 40, 0)
+shadow_enabled = true
+
+[node name="InputRouter" type="Node" parent="."]
+script = ExtResource("2_input")
+
+[node name="Quadcopter" parent="." node_paths=PackedStringArray("input_router") instance=ExtResource("3_drone")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.1, 0)
+input_router = NodePath("../InputRouter")
+
+[node name="CameraDirector" type="Node3D" parent="." node_paths=PackedStringArray("target_drone", "chase_camera", "fpv_camera")]
+script = ExtResource("4_cam_director")
+target_drone = NodePath("../Quadcopter")
+chase_camera = NodePath("ChaseCamera")
+fpv_camera = NodePath("../Quadcopter/DroneRig/Fuselage/GimbalMount/GimbalPitch/FPVCamera")
+
+[node name="ChaseCamera" type="Camera3D" parent="CameraDirector"]
+transform = Transform3D(1, 0, 0, 0, 0.965926, 0.258819, 0, -0.258819, 0.965926, 0, 1.2, 3.2)
+current = true
+fov = 75.0
+
+[node name="FlightHUD" parent="." node_paths=PackedStringArray("input_router", "flight_physics", "camera_director") instance=ExtResource("5_hud")]
+input_router = NodePath("../InputRouter")
+flight_physics = NodePath("../Quadcopter")
+camera_director = NodePath("../CameraDirector")
+
+[node name="MissionOverlay" parent="FlightHUD" instance=ExtResource("8_overlay")]
+
+[node name="PauseMenu" parent="FlightHUD" instance=ExtResource("9_pause")]
+
+[node name="EnvironmentGeometry" type="Node3D" parent="."]
+
+[node name="GroundStatic" type="StaticBody3D" parent="EnvironmentGeometry"]
+
+[node name="GroundMesh" type="MeshInstance3D" parent="EnvironmentGeometry/GroundStatic"]
+mesh = SubResource("PlaneMesh_Ground")
+
+[node name="GroundCollision" type="CollisionShape3D" parent="EnvironmentGeometry/GroundStatic"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.25, 0)
+shape = SubResource("BoxShape3D_Ground")
+
+[node name="LaunchPad" type="Node3D" parent="EnvironmentGeometry"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.04, 0)
+
+[node name="PadMesh" type="MeshInstance3D" parent="EnvironmentGeometry/LaunchPad"]
+mesh = SubResource("CylinderMesh_Pad")
+
+[node name="PadRing" type="MeshInstance3D" parent="EnvironmentGeometry/LaunchPad"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.041, 0)
+mesh = SubResource("TorusMesh_PadRing")
+
+[node name="Marking_H1" type="MeshInstance3D" parent="EnvironmentGeometry/LaunchPad"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.6, 0.045, 0)
+mesh = SubResource("BoxMesh_Marking")
+
+[node name="Marking_H2" type="MeshInstance3D" parent="EnvironmentGeometry/LaunchPad"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.6, 0.045, 0)
+mesh = SubResource("BoxMesh_Marking")
+
+[node name="Marking_HBar" type="MeshInstance3D" parent="EnvironmentGeometry/LaunchPad"]
+transform = Transform3D(-4.37114e-08, 0, 1, 0, 1, 0, -1, 0, -4.37114e-08, 0, 0.045, 0)
+mesh = SubResource("BoxMesh_Marking")
+
+[node name="FlightGates" type="Node3D" parent="EnvironmentGeometry"]
+
+[node name="Gate_01" parent="EnvironmentGeometry/FlightGates" instance=ExtResource("6_gate")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, -20)
+gate_id = 0
+
+[node name="Gate_02" parent="EnvironmentGeometry/FlightGates" instance=ExtResource("6_gate")]
+transform = Transform3D(0.707107, 0, -0.707107, 0, 1, 0, 0.707107, 0, 0.707107, 25, 0, -45)
+gate_id = 1
+
+[node name="Gate_03" parent="EnvironmentGeometry/FlightGates" instance=ExtResource("6_gate")]
+transform = Transform3D(-4.37114e-08, 0, -1, 0, 1, 0, 1, 0, -4.37114e-08, 45, 0, -20)
+gate_id = 2
+
+[node name="CollectibleCoins" type="Node3D" parent="EnvironmentGeometry"]
+
+[node name="Coin_01" parent="EnvironmentGeometry/CollectibleCoins" instance=ExtResource("7_coin")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 2.5, -10)
+
+[node name="Coin_02" parent="EnvironmentGeometry/CollectibleCoins" instance=ExtResource("7_coin")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 12, 3.2, -32)
+
+[node name="Coin_03" parent="EnvironmentGeometry/CollectibleCoins" instance=ExtResource("7_coin")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 35, 4.0, -32)

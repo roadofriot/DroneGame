@@ -11,6 +11,7 @@ extends Node3D
 @onready var mission_results: MissionResults = $FlightHUD/MissionResults
 @onready var pause_menu: PauseMenu = $FlightHUD/PauseMenu
 @onready var world_select_menu: WorldSelectMenu = get_node_or_null("FlightHUD/WorldSelectMenu")
+@onready var real_location_explorer: RealLocationExplorer = get_node_or_null("FlightHUD/RealLocationExplorer")
 @onready var training_academy: TrainingAcademy = get_node_or_null("TrainingAcademy")
 
 @onready var gates_container: Node3D = $EnvironmentGeometry/FlightGates
@@ -58,6 +59,8 @@ func _ready() -> void:
 			flight_hud.world_select_requested.connect(world_select_menu.show_menu)
 		if not world_select_menu.world_selected.is_connected(_on_world_selected):
 			world_select_menu.world_selected.connect(_on_world_selected)
+		if real_location_explorer and not world_select_menu.real_location_explorer_requested.is_connected(_on_explorer_requested):
+			world_select_menu.real_location_explorer_requested.connect(_on_explorer_requested)
 
 	# Initialize Training Academy
 	if not training_academy:
@@ -150,3 +153,7 @@ func _on_world_selected(world_id: String) -> void:
 		var target_scene = def["scene_path"]
 		if ResourceLoader.exists(target_scene):
 			get_tree().change_scene_to_file(target_scene)
+
+func _on_explorer_requested() -> void:
+	if real_location_explorer:
+		real_location_explorer.visible = true
