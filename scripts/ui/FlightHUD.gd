@@ -99,6 +99,10 @@ var settings_service: SettingsService
 @onready var label_state_banner: Label = get_node_or_null("CenterOverlay/StateBanner")
 @onready var proximity_warning: Label = get_node_or_null("CenterOverlay/ProximityWarning")
 
+# Adventure Telemetry Ribbon (Instantiated dynamically or referenced from tree)
+var adventure_panel: PanelContainer = null
+var label_adventure_info: Label = null
+
 # Settings Modal
 @onready var settings_modal: PanelContainer = get_node_or_null("SettingsModal")
 @onready var btn_drone_sound: Button = get_node_or_null("SettingsModal/VBox/BtnDroneSound")
@@ -472,6 +476,67 @@ func show_destination_reached_banner(st: Dictionary, results: Dictionary) -> voi
 		st_name.to_upper(), next_name.to_upper(), km
 	]
 	_show_banner(banner_text, 6.0)
+
+func update_adventure_telemetry(data: Dictionary) -> void:
+	_ensure_adventure_panel()
+	if not label_adventure_info:
+		return
+	var dest_name = data.get("destination_name", "Destination")
+	var rem_m = data.get("distance_remaining_m", 0.0)
+	var trav_m = data.get("distance_travelled_m", 0.0)
+	var rem_km = rem_m / 1000.0
+	var trav_km = trav_m / 1000.0
+	var cp_idx = data.get("next_checkpoint", 1)
+	var cp_total = data.get("total_checkpoints", 0)
+	var coins = data.get("coins_collected", 0)
+
+	var info_text = "📍 DEST: %s | REM: %.2f km | FLOWN: %.2f km" % [
+		dest_name, rem_km, trav_km
+	]
+	if cp_total > 0:
+		info_text += " | GATE: %d/%d" % [min(cp_idx, cp_total), cp_total]
+	if coins > 0:
+		info_text += " | 🪙 %d" % coins
+
+	label_adventure_info.text = info_text
+	if adventure_panel:
+		adventure_panel.visible = true
+
+func _ensure_adventure_panel() -> void:
+	if adventure_panel != null and is_instance_valid(adventure_panel):
+		return
+	adventure_panel = PanelContainer.new()
+	adventure_panel.name = "AdventureTelemetryBar"
+	adventure_panel.anchors_preset = Control.PRESET_TOP_WIDE
+	adventure_panel.anchor_left = 0.5
+	adventure_panel.anchor_right = 0.5
+	adventure_panel.offset_left = -280.0
+	adventure_panel.offset_right = 280.0
+	adventure_panel.offset_top = 80.0
+	adventure_panel.offset_bottom = 106.0
+	adventure_panel.grow_horizontal = Control.GROW_DIRECTION_BOTH
+	adventure_panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
+
+	var style = StyleBoxFlat.new()
+	style.bg_color = Color(0.04, 0.07, 0.12, 0.85)
+	style.border_color = Color(0.18, 0.72, 0.95, 0.7)
+	style.set_border_width_all(1)
+	style.set_corner_radius_all(6)
+	style.content_margin_left = 12
+	style.content_margin_right = 12
+	style.content_margin_top = 4
+	style.content_margin_bottom = 4
+	adventure_panel.add_theme_stylebox_override("panel", style)
+
+	label_adventure_info = Label.new()
+	label_adventure_info.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	label_adventure_info.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	label_adventure_info.add_theme_font_size_override("font_size", 11)
+	label_adventure_info.add_theme_color_override("font_color", Color(0.3, 0.92, 1.0))
+	label_adventure_info.text = "📍 ADVENTURE MODE INITIALIZED"
+	adventure_panel.add_child(label_adventure_info)
+
+	add_child(adventure_panel)
 
 func _on_preflight_failed(reason: String) -> void:
 	_show_banner("PREFLIGHT FAILED: %s" % reason.to_upper(), 4.0)

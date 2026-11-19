@@ -99,6 +99,10 @@ func _ready() -> void:
 			var dest_sig = adventure_nav.destination_reached
 			if not dest_sig.is_connected(_on_adventure_destination_reached):
 				dest_sig.connect(_on_adventure_destination_reached)
+			if flight_hud.has_method("update_adventure_telemetry"):
+				var nav_sig = adventure_nav.navigation_telemetry_updated
+				if not nav_sig.is_connected(flight_hud.update_adventure_telemetry):
+					nav_sig.connect(flight_hud.update_adventure_telemetry)
 		if audio_director:
 			var cp_sig = adventure_nav.checkpoint_passed
 			if not cp_sig.is_connected(_on_adventure_checkpoint_passed):

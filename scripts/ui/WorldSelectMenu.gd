@@ -51,10 +51,18 @@ func _create_world_card(world_def: Dictionary, player_level: int) -> Control:
 	var panel = PanelContainer.new()
 	panel.custom_minimum_size = Vector2(260, 340)
 
+	var wid = world_def.get("id", "")
+	var is_stage = wid.begins_with("stage_") or wid == "nepal_adventure"
+
 	var style = StyleBoxFlat.new()
-	style.bg_color = Color(0.1, 0.14, 0.2, 0.9)
+	if is_stage:
+		style.bg_color = Color(0.08, 0.13, 0.22, 0.95)
+		style.border_color = Color(0.95, 0.72, 0.2, 0.8)
+	else:
+		style.bg_color = Color(0.1, 0.14, 0.2, 0.9)
+		style.border_color = Color(0.25, 0.75, 1, 0.7)
+
 	style.set_corner_radius_all(8)
-	style.border_color = Color(0.25, 0.75, 1, 0.7)
 	style.set_border_width_all(1)
 	style.content_margin_left = 16
 	style.content_margin_top = 16
@@ -68,7 +76,10 @@ func _create_world_card(world_def: Dictionary, player_level: int) -> Control:
 
 	var title_lbl = Label.new()
 	title_lbl.text = world_def.get("name", "World").to_upper()
-	title_lbl.add_theme_color_override("font_color", Color(0.2, 0.85, 1))
+	if is_stage:
+		title_lbl.add_theme_color_override("font_color", Color(1.0, 0.8, 0.3))
+	else:
+		title_lbl.add_theme_color_override("font_color", Color(0.2, 0.85, 1))
 	title_lbl.add_theme_font_size_override("font_size", 16)
 	vbox.add_child(title_lbl)
 
@@ -99,16 +110,21 @@ func _create_world_card(world_def: Dictionary, player_level: int) -> Control:
 	btn_style.set_corner_radius_all(6)
 
 	if is_unlocked:
-		action_btn.text = "FLY WORLD"
-		btn_style.bg_color = Color(0.12, 0.45, 0.7, 0.9)
+		action_btn.text = "FLY STAGE" if is_stage else "FLY WORLD"
+		if is_stage:
+			btn_style.bg_color = Color(0.14, 0.48, 0.32, 0.95)
+		else:
+			btn_style.bg_color = Color(0.12, 0.45, 0.7, 0.9)
 		action_btn.add_theme_stylebox_override("normal", btn_style)
-		var wid = world_def.get("id")
 		action_btn.pressed.connect(func():
 			visible = false
 			world_selected.emit(wid)
 		)
 	else:
-		action_btn.text = "LOCKED (LVL %d)" % world_def.get("required_level", 2)
+		if is_stage:
+			action_btn.text = "LOCKED (Fly Prev Stage)"
+		else:
+			action_btn.text = "LOCKED (LVL %d)" % world_def.get("required_level", 2)
 		action_btn.disabled = true
 		btn_style.bg_color = Color(0.2, 0.2, 0.25, 0.6)
 		action_btn.add_theme_stylebox_override("disabled", btn_style)

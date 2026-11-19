@@ -9,6 +9,8 @@ const AdventureWorldStreamer = preload("res://scripts/world/AdventureWorldStream
 const AdventureNavManager = preload("res://scripts/world/AdventureNavigationManager.gd")
 const SaveService = preload("res://scripts/save/SaveService.gd")
 const WorldData = preload("res://scripts/world/WorldData.gd")
+const FlightHUD = preload("res://scripts/ui/FlightHUD.gd")
+const WorldSelectMenu = preload("res://scripts/ui/WorldSelectMenu.gd")
 
 func _init() -> void:
 	run_tests()
@@ -19,7 +21,7 @@ func run_tests() -> void:
 	print("==================================================")
 
 	var tests_passed: int = 0
-	var tests_total: int = 7
+	var tests_total: int = 8
 
 	if test_na01_eight_stages_contract():
 		tests_passed += 1
@@ -34,6 +36,8 @@ func run_tests() -> void:
 	if test_na06_landmark_discovery_and_rewards():
 		tests_passed += 1
 	if test_na07_touchdown_and_stage_unlocking():
+		tests_passed += 1
+	if test_na08_hud_telemetry_and_stage_cards():
 		tests_passed += 1
 
 	print("==================================================")
@@ -280,4 +284,68 @@ func test_na07_touchdown_and_stage_unlocking() -> bool:
 	dummy_drone.queue_free()
 	nav.queue_free()
 	print("  - Stage unlocking verified: Lumbini touchdown unlocked Stage 03 Tansen (PASS)")
+	return true
+
+func test_na08_hud_telemetry_and_stage_cards() -> bool:
+	print("[NA-08] Testing HUD Adventure Telemetry and WorldSelect Stage Cards...")
+	var hud_scene = load("res://scenes/ui/FlightHUD.tscn") as PackedScene
+	if not hud_scene:
+		printerr("FAIL: Could not load FlightHUD.tscn")
+		return false
+
+	var hud = hud_scene.instantiate() as FlightHUD
+	root.add_child(hud)
+
+	# Simulate telemetry packet
+	var test_packet = {
+		"destination_name": "Lumbini Gardens",
+		"distance_travelled_m": 1250.0,
+		"distance_remaining_m": 1750.0,
+		"speed_kmh": 45.0,
+		"altitude_m": 22.0,
+		"flight_time_sec": 35.0,
+		"next_checkpoint": 2,
+		"total_checkpoints": 4,
+		"coins_collected": 12
+	}
+	hud.update_adventure_telemetry(test_packet)
+
+	if not hud.adventure_panel or not hud.adventure_panel.visible:
+		printerr("FAIL: Adventure panel was not created or made visible")
+		hud.queue_free()
+		return false
+
+	if not "Lumbini Gardens" in hud.label_adventure_info.text:
+		printerr("FAIL: Telemetry destination name missing from label text")
+		hud.queue_free()
+		return false
+
+	# Test WorldSelectMenu card generation for adventure stages
+	var menu_scene = load("res://scenes/ui/WorldSelectMenu.tscn") as PackedScene
+	if not menu_scene:
+		printerr("FAIL: Could not load WorldSelectMenu.tscn")
+		hud.queue_free()
+		return false
+
+	var menu = menu_scene.instantiate() as WorldSelectMenu
+	root.add_child(menu)
+	var stage_card = menu._create_world_card({
+		"id": "stage_01_butwal",
+		"name": "Stage 01: Butwal City",
+		"region": "Rupandehi Hub",
+		"difficulty": "Beginner",
+		"description": "Urban takeoff",
+		"unlocked_by_default": true,
+		"required_level": 1
+	}, 1)
+
+	if not stage_card:
+		printerr("FAIL: Could not create stage card in WorldSelectMenu")
+		menu.queue_free()
+		hud.queue_free()
+		return false
+
+	hud.queue_free()
+	menu.queue_free()
+	print("  - HUD telemetry ribbon and WorldSelectMenu stage cards verified (PASS)")
 	return true
