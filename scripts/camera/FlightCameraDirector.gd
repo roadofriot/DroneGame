@@ -24,7 +24,26 @@ var current_mode: CameraMode = CameraMode.CHASE
 var orbit_angle: float = 0.0
 
 func _ready() -> void:
+	if chase_camera:
+		chase_camera.near = 0.15
+		chase_camera.far = 8000.0
+	if fpv_camera:
+		fpv_camera.near = 0.15
+		fpv_camera.far = 8000.0
+
+	if Engine.has_singleton("WorldOrigin"):
+		var wo = Engine.get_singleton("WorldOrigin")
+		if wo.has_signal("origin_shifted"):
+			wo.origin_shifted.connect(_on_world_origin_shifted)
+
 	set_camera_mode(CameraMode.CHASE)
+
+func _on_world_origin_shifted(shift_vec: Vector3, _accum_offset: Vector3) -> void:
+	if chase_camera:
+		chase_camera.global_position -= shift_vec
+	if fpv_camera:
+		fpv_camera.global_position -= shift_vec
+	global_position -= shift_vec
 
 func set_camera_mode(mode: CameraMode) -> void:
 	current_mode = mode

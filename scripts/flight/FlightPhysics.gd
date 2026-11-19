@@ -163,6 +163,24 @@ func _ready() -> void:
 		input_router.stunt_requested.connect(_on_stunt_requested)
 		if input_router.has_signal("flip_pressed"):
 			input_router.flip_pressed.connect(_on_flip_pressed)
+
+	if Engine.has_singleton("WorldOrigin"):
+		var wo = Engine.get_singleton("WorldOrigin")
+		wo.register_drone(self)
+	if Engine.has_singleton("GameState"):
+		var gs = Engine.get_singleton("GameState")
+		gs.set_true_home(spawn_transform.origin)
+
+func _integrate_forces(state: PhysicsDirectBodyState3D) -> void:
+	if Engine.has_singleton("WorldOrigin"):
+		var wo = Engine.get_singleton("WorldOrigin")
+		var shift = wo.consume_physics_shift()
+		if not shift.is_zero_approx():
+			var t = state.transform
+			t.origin -= shift
+			state.transform = t
+			spawn_transform.origin -= shift
+
 		if input_router.has_signal("emergency_stop_pressed"):
 			input_router.emergency_stop_pressed.connect(_on_emergency_stop_pressed)
 		if input_router.has_signal("emergency_cut_requested"):
@@ -778,8 +796,13 @@ func reset_to_pad() -> void:
 	print("[FLIGHT] RESET_COMPLETE — Placed on Pad")
 
 func get_home_distance() -> float:
-	var home_flat = Vector2(spawn_transform.origin.x, spawn_transform.origin.z)
+	var home_pos = spawn_transform.origin
 	var cur_pos = global_position if (is_inside_tree() and is_node_ready()) else position
+	if Engine.has_singleton("WorldOrigin"):
+		var wo = Engine.get_singleton("WorldOrigin")
+		home_pos = wo.to_true_world(home_pos)
+		cur_pos = wo.to_true_world(cur_pos)
+	var home_flat = Vector2(home_pos.x, home_pos.z)
 	var cur_flat = Vector2(cur_pos.x, cur_pos.z)
 	return home_flat.distance_to(cur_flat)
 
@@ -884,6 +907,13 @@ func _emit_telemetry() -> void:
 	var f_mode = flight_mode_manager.get_mode_name() if flight_mode_manager else "ANGLE"
 	var time_rem = battery_model.get_estimated_time_remaining_seconds() if battery_model else 900.0
 
+	var cur_pos = global_position if (is_inside_tree() and is_node_ready()) else position
+	var home_p = spawn_transform.origin
+	if Engine.has_singleton("WorldOrigin"):
+		var wo = Engine.get_singleton("WorldOrigin")
+		cur_pos = wo.to_true_world(cur_pos)
+		home_p = wo.to_true_world(home_p)
+
 	var data = {
 		"state": DroneState.keys()[current_state],
 		"profile": active_profile.get("name", "Normal"),
@@ -899,8 +929,8 @@ func _emit_telemetry() -> void:
 		"battery_volts": battery_voltage,
 		"battery_time_remaining": time_rem,
 		"motor_rpms": motor_rpms,
-		"drone_pos": global_position,
-		"home_pos": spawn_transform.origin,
+		"drone_pos": cur_pos,
+		"home_pos": home_p,
 		"home_distance": home_dist,
 		"est_rth_time": est_return_sec,
 		"flight_time": total_flight_time,
