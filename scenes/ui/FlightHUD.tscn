@@ -329,12 +329,14 @@ anchor_bottom = 1.0
 offset_top = -420.0
 offset_right = 430.0
 grow_vertical = 0
+mouse_filter = 2
 theme_override_constants/margin_left = 24
 theme_override_constants/margin_bottom = 12
 
 [node name="LeftJoystick" type="Control" parent="LeftCluster"]
 custom_minimum_size = Vector2(400, 400)
 layout_mode = 2
+mouse_filter = 2
 script = ExtResource("2_joystick")
 stick_name = "THROTTLE / YAW"
 stick_type = "LEFT"
@@ -543,12 +545,14 @@ offset_left = -430.0
 offset_top = -420.0
 grow_horizontal = 0
 grow_vertical = 0
+mouse_filter = 2
 theme_override_constants/margin_right = 24
 theme_override_constants/margin_bottom = 12
 
 [node name="RightJoystick" type="Control" parent="RightCluster"]
 custom_minimum_size = Vector2(400, 400)
 layout_mode = 2
+mouse_filter = 2
 script = ExtResource("2_joystick")
 stick_name = "PITCH / ROLL"
 stick_type = "RIGHT"

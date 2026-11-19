@@ -47,6 +47,11 @@ func _init() -> void:
 	_init_material()
 
 func _ready() -> void:
+	if OS.has_feature("mobile") or OS.has_feature("android"):
+		load_radius = 2
+		unload_radius = 3
+		upload_budget_per_frame = 1
+
 	if not tracked_target:
 		tracked_target = get_node_or_null("../Quadcopter")
 	if not tracked_target:

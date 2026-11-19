@@ -53,9 +53,9 @@ func run_suite() -> void:
 	print("================================================================================")
 	var passed = 0
 	for res in test_results:
-		var status = "PASS" if res.passed else "FAIL"
+		var status = "PASS" if res.get("passed", false) else "FAIL"
 		print("[%s] %s: %s | %s" % [res.id, res.title, status, res.evidence])
-		if res.passed: passed += 1
+		if res.get("passed", false): passed += 1
 
 	print("================================================================================")
 	print("Master Acceptance Results: %d / %d Tests Passed" % [passed, test_results.size()])

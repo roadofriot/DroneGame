@@ -32,7 +32,7 @@ window/size/viewport_height=720
 window/size/resizable=true
 window/stretch/mode="canvas_items"
 window/stretch/aspect="expand"
-window/handheld/orientation=6
+window/handheld/orientation=0
 
 [input]
 
@@ -146,11 +146,14 @@ flight_headless_toggle={
 [physics]
 
 common/physics_ticks_per_second=120
+common/physics_ticks_per_second.mobile=60
 common/max_physics_steps_per_frame=8
+common/max_physics_steps_per_frame.mobile=4
 
 [rendering]
 
 renderer/rendering_method="forward_plus"
+renderer/rendering_method.mobile="mobile"
 textures/vram_compression/import_etc2_astc=true
 
 [input_devices]
