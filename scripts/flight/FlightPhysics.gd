@@ -196,10 +196,16 @@ func _integrate_forces(state: PhysicsDirectBodyState3D) -> void:
 		if input_router.has_signal("trim_roll_requested"):
 			input_router.trim_roll_requested.connect(func(d): trim_manager.adjust_roll(d))
 		if input_router.has_signal("camera_tilt_requested"):
-			input_router.camera_tilt_requested.connect(func(d): gimbal_pitch_user_deg = clampf(gimbal_pitch_user_deg + d * 30.0, -90.0, 20.0))
+			input_router.camera_tilt_requested.connect(
+				func(d): gimbal_pitch_user_deg = clampf(
+					gimbal_pitch_user_deg + d * 30.0, -90.0, 20.0
+				)
+			)
 
 	if battery_model:
-		battery_model.battery_warning_low.connect(func(_pct): HapticsManager.play_haptic(HapticsManager.Effect.BATTERY_LOW))
+		battery_model.battery_warning_low.connect(
+			func(_pct): HapticsManager.play_haptic(HapticsManager.Effect.BATTERY_LOW)
+		)
 		battery_model.auto_rth_triggered.connect(func(): trigger_rth())
 		battery_model.forced_landing_triggered.connect(func(): land())
 
@@ -439,9 +445,14 @@ func _update_battery(delta: float) -> void:
 
 	if battery_model:
 		battery_model.remaining_wh = (battery_percent / 100.0) * battery_model.capacity_wh
+		var is_airborne = (
+			current_state == DroneState.FLYING
+			or current_state == DroneState.HOVER
+			or current_state == DroneState.RTH
+		)
 		if battery_percent <= 15.0 and current_state == DroneState.FLYING:
 			trigger_rth()
-		elif battery_percent <= 5.0 and (current_state == DroneState.FLYING or current_state == DroneState.HOVER or current_state == DroneState.RTH):
+		elif battery_percent <= 5.0 and is_airborne:
 			land()
 
 # --- State Process Handlers ---
@@ -512,18 +523,25 @@ func _process_hover(delta: float) -> void:
 	# Maintain stable hover via Altitude Hold PID
 	var alt_error = auto_target_altitude - altitude_agl
 	var hover_thrust = (drone_mass * 9.8) / (4.0 * max_thrust_per_motor)
-	var hold_thrust = clampf(hover_thrust + (alt_error * 0.18) - (linear_velocity.y * 0.12), 0.15, 0.90)
+	var hold_thrust = clampf(
+		hover_thrust + (alt_error * 0.18) - (linear_velocity.y * 0.12),
+		0.15,
+		0.90
+	)
 	_calculate_auto_level_rpms(hold_thrust, 0.0, 0.0, 0.0, delta)
 
 func _process_flying(delta: float) -> void:
 	# Phase 5: FlipController aerobatic maneuvers take precedence during active flips
 	if flip_controller and flip_controller.is_active():
-		var cur_b = global_transform.basis.orthonormalized() if (is_inside_tree() and is_node_ready()) else transform.basis.orthonormalized()
+		var is_ready = is_inside_tree() and is_node_ready()
+		var cur_b = global_transform.basis.orthonormalized() if is_ready else transform.basis.orthonormalized()
 		var local_w = cur_b.transposed() * angular_velocity
 		var up_y = cur_b.y.y
 		var override = flip_controller.step(local_w, up_y, delta)
 		var neutral_frame = ControlFrame.new(0.0, 0.0, 0.0, 0.0)
-		var out = flight_controller.step(cur_b, angular_velocity, linear_velocity, neutral_frame, override, delta)
+		var out = flight_controller.step(
+			cur_b, angular_velocity, linear_velocity, neutral_frame, override, delta
+		)
 		for i in range(4):
 			target_motor_rpms[i] = clampf(out.motors[i] / max_thrust_per_motor, 0.0, 1.0)
 		if not flip_controller.is_active():
@@ -549,14 +567,23 @@ func _process_flying(delta: float) -> void:
 
 	# Apply Headless Mode
 	if headless_controller and headless_controller.is_enabled:
-		var corrected = headless_controller.process_stick(Vector2(in_roll, in_pitch), deg_to_rad(heading_deg))
+		var corrected = headless_controller.process_stick(
+			Vector2(in_roll, in_pitch), deg_to_rad(heading_deg)
+		)
 		in_roll = corrected.x
 		in_pitch = corrected.y
 
 	# Apply Active Braking in ANGLE mode
-	if brake_controller and (flight_mode_manager == null or flight_mode_manager.current_mode == FlightModeManager.Mode.ANGLE):
+	var is_angle_mode = (
+		flight_mode_manager == null
+		or flight_mode_manager.current_mode == FlightModeManager.Mode.ANGLE
+	)
+	if brake_controller and is_angle_mode:
 		var heading_b = Basis(Vector3.UP, deg_to_rad(heading_deg))
-		var brake_res = brake_controller.compute_brake_tilt(linear_velocity, heading_b, Vector2(in_roll, in_pitch), 0.12, flight_controller.max_tilt, is_braking)
+		var brake_res = brake_controller.compute_brake_tilt(
+			linear_velocity, heading_b, Vector2(in_roll, in_pitch),
+			0.12, flight_controller.max_tilt, is_braking
+		)
 		if brake_res.active:
 			in_pitch += brake_res.pitch_offset / maxf(0.001, flight_controller.max_tilt)
 			in_roll += brake_res.roll_offset / maxf(0.001, flight_controller.max_tilt)
@@ -583,11 +610,13 @@ func _process_flying(delta: float) -> void:
 		var cur_flat = Vector2(cur_pos.x, cur_pos.z)
 		var to_home_2d = (home_flat - cur_flat).normalized()
 		var breach_depth = dist_home - max_horizontal_range
-		var push_force = Vector3(to_home_2d.x, 0.0, to_home_2d.y) * clampf(breach_depth * 8.0, 4.0, 25.0)
+		var push_mag = clampf(breach_depth * 8.0, 4.0, 25.0)
+		var push_force = Vector3(to_home_2d.x, 0.0, to_home_2d.y) * push_mag
 		apply_central_force(push_force)
 		flight_boundary_reached.emit("GEOFENCE_RADIUS")
 
-	var cur_basis = global_transform.basis.orthonormalized() if (is_inside_tree() and is_node_ready()) else transform.basis.orthonormalized()
+	var is_tree_ready = is_inside_tree() and is_node_ready()
+	var cur_basis = global_transform.basis.orthonormalized() if is_tree_ready else transform.basis.orthonormalized()
 
 	# Fetch unified ControlFrame
 	var frame: ControlFrame = null
@@ -677,7 +706,11 @@ func _process_rth(delta: float) -> void:
 			# Maintain altitude
 			var alt_err = rth_clearance_altitude - altitude_agl
 			var hover_thrust = (drone_mass * 9.8) / (4.0 * max_thrust_per_motor)
-			var hold_thrust = clampf(hover_thrust + (alt_err * 0.14) - (linear_velocity.y * 0.1), 0.2, 0.85)
+			var hold_thrust = clampf(
+				hover_thrust + (alt_err * 0.14) - (linear_velocity.y * 0.1),
+				0.2,
+				0.85
+			)
 			_calculate_auto_level_rpms(hold_thrust, target_pitch_angle, 0.0, yaw_rate, delta)
 
 		2:
@@ -694,7 +727,12 @@ func takeoff() -> bool:
 	print("[INPUT] TAKEOFF_BUTTON_PRESSED")
 	print("[COMMAND] TAKEOFF_REQUESTED")
 
-	if current_state == DroneState.FLYING or current_state == DroneState.HOVER or current_state == DroneState.TAKEOFF:
+	var is_airborne = (
+		current_state == DroneState.FLYING
+		or current_state == DroneState.HOVER
+		or current_state == DroneState.TAKEOFF
+	)
+	if is_airborne:
 		print("[VALIDATION] Cannot Take Off: Already airborne")
 		preflight_failed.emit("Already airborne")
 		return false
@@ -714,7 +752,13 @@ func takeoff() -> bool:
 
 func land() -> void:
 	print("[COMMAND] LAND_REQUESTED")
-	if current_state == DroneState.FLYING or current_state == DroneState.HOVER or current_state == DroneState.TAKEOFF or current_state == DroneState.RTH:
+	var is_airborne = (
+		current_state == DroneState.FLYING
+		or current_state == DroneState.HOVER
+		or current_state == DroneState.TAKEOFF
+		or current_state == DroneState.RTH
+	)
+	if is_airborne:
 		current_state = DroneState.LANDING
 		state_timer = 0.0
 		drone_state_changed.emit("LANDING")
@@ -819,24 +863,42 @@ func _perform_preflight_check() -> String:
 
 # --- Physics Calculations ---
 
-func _calculate_auto_level_rpms(base_thrust: float, target_pitch_deg: float, target_roll_deg: float, target_yaw_rate: float, _delta: float) -> void:
+func _calculate_auto_level_rpms(
+	base_thrust: float,
+	target_pitch_deg: float,
+	target_roll_deg: float,
+	target_yaw_rate: float,
+	_delta: float
+) -> void:
 	var pitch_err = deg_to_rad(target_pitch_deg - pitch_deg)
 	var roll_err = deg_to_rad(target_roll_deg - roll_deg)
 
-	var cur_basis = global_transform.basis.orthonormalized() if (is_inside_tree() and is_node_ready()) else transform.basis.orthonormalized()
+	var is_ready = is_inside_tree() and is_node_ready()
+	var cur_basis = global_transform.basis.orthonormalized() if is_ready else transform.basis.orthonormalized()
 	var local_ang_vel = cur_basis.transposed() * angular_velocity
 
 	var pitch_torque = (pitch_err * pitch_pid_p) - (local_ang_vel.x * pitch_pid_d)
 	var roll_torque = (roll_err * roll_pid_p) - (local_ang_vel.z * roll_pid_d)
 	var yaw_torque = target_yaw_rate - (local_ang_vel.y * yaw_rate_p)
 
-	target_motor_rpms[0] = clampf(base_thrust - pitch_torque + roll_torque + (yaw_torque * 0.2), 0.0, 1.0)
-	target_motor_rpms[1] = clampf(base_thrust - pitch_torque - roll_torque - (yaw_torque * 0.2), 0.0, 1.0)
-	target_motor_rpms[2] = clampf(base_thrust + pitch_torque + roll_torque - (yaw_torque * 0.2), 0.0, 1.0)
-	target_motor_rpms[3] = clampf(base_thrust + pitch_torque - roll_torque + (yaw_torque * 0.2), 0.0, 1.0)
+	target_motor_rpms[0] = clampf(
+		base_thrust - pitch_torque + roll_torque + (yaw_torque * 0.2), 0.0, 1.0
+	)
+	target_motor_rpms[1] = clampf(
+		base_thrust - pitch_torque - roll_torque - (yaw_torque * 0.2), 0.0, 1.0
+	)
+	target_motor_rpms[2] = clampf(
+		base_thrust + pitch_torque + roll_torque - (yaw_torque * 0.2), 0.0, 1.0
+	)
+	target_motor_rpms[3] = clampf(
+		base_thrust + pitch_torque - roll_torque + (yaw_torque * 0.2), 0.0, 1.0
+	)
 
-func _calculate_acro_rpms(base_thrust: float, in_pitch: float, in_roll: float, in_yaw: float, _delta: float) -> void:
-	var cur_basis = global_transform.basis.orthonormalized() if (is_inside_tree() and is_node_ready()) else transform.basis.orthonormalized()
+func _calculate_acro_rpms(
+	base_thrust: float, in_pitch: float, in_roll: float, in_yaw: float, _delta: float
+) -> void:
+	var is_ready = is_inside_tree() and is_node_ready()
+	var cur_basis = global_transform.basis.orthonormalized() if is_ready else transform.basis.orthonormalized()
 	var local_ang_vel = cur_basis.transposed() * angular_velocity
 	var p_rate = (in_pitch * 5.0) - local_ang_vel.x
 	var r_rate = (in_roll * 5.0) - local_ang_vel.z
@@ -861,7 +923,8 @@ func _apply_motor_forces(delta: float) -> void:
 		var ge_factor = 1.0 - (altitude_agl / ground_effect_dist)
 		total_thrust *= (1.0 + (ge_factor * ground_effect_mult))
 
-	var cur_basis = global_transform.basis.orthonormalized() if (is_inside_tree() and is_node_ready()) else transform.basis.orthonormalized()
+	var is_ready = is_inside_tree() and is_node_ready()
+	var cur_basis = global_transform.basis.orthonormalized() if is_ready else transform.basis.orthonormalized()
 	var thrust_vector = cur_basis.y * total_thrust
 	if thrust_vector.is_finite():
 		apply_central_force(thrust_vector)
@@ -974,7 +1037,8 @@ func perform_flip(dir: Vector2 = Vector2(0, -1)) -> bool:
 		return false
 	if not state_machine.is_flying():
 		return false
-	var is_acro: bool = (active_profile_name == "acro" or active_profile.get("name", "") == "Acro / Manual")
+	var profile_name = active_profile.get("name", "")
+	var is_acro: bool = (active_profile_name == "acro" or profile_name == "Acro / Manual")
 	var requested: bool = flip_controller.request(dir, altitude_agl, battery, is_acro)
 	if requested:
 		state_machine.transition_to(FlightStateMachine.State.FLIPPING, "FLIP_STARTED")

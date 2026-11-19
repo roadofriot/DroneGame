@@ -43,7 +43,7 @@ var active_beacons: Dictionary = {}
 
 func _init() -> void:
 	_mutex = Mutex.new()
-	_init_noise()
+	init_noise()
 	_init_material()
 
 func _ready() -> void:
@@ -57,7 +57,8 @@ func _ready() -> void:
 		if wo.has_signal("origin_shifted"):
 			wo.origin_shifted.connect(_on_world_origin_shifted)
 
-func _init_noise() -> void:
+## Configures the FastNoiseLite fractal heightmap generator.
+func init_noise() -> void:
 	noise = FastNoiseLite.new()
 	noise.seed = noise_seed
 	noise.noise_type = FastNoiseLite.TYPE_SIMPLEX_SMOOTH
@@ -66,6 +67,9 @@ func _init_noise() -> void:
 	noise.fractal_lacunarity = 2.0
 	noise.fractal_gain = 0.5
 	noise.frequency = 0.0035
+
+func _init_noise() -> void:
+	init_noise()
 
 func _init_material() -> void:
 	terrain_material = StandardMaterial3D.new()
@@ -83,14 +87,19 @@ func get_height_at(world_x: float, world_z: float) -> float:
 
 func _process(_delta: float) -> void:
 	_process_uploads()
-	_update_streaming_grid()
+	update_streaming_grid()
 
 func _update_streaming_grid() -> void:
+	update_streaming_grid()
+
+## Evaluates the active chunk grid around the tracked target, queueing chunks and LOD shifts.
+func update_streaming_grid() -> void:
 	if not tracked_target or not is_instance_valid(tracked_target):
 		return
 
 	# Determine current true world chunk coordinates
-	var player_pos = tracked_target.global_position if (tracked_target.is_inside_tree() and tracked_target.is_node_ready()) else tracked_target.position
+	var is_ready = tracked_target.is_inside_tree() and tracked_target.is_node_ready()
+	var player_pos = tracked_target.global_position if is_ready else tracked_target.position
 	if Engine.has_singleton("WorldOrigin"):
 		var wo = Engine.get_singleton("WorldOrigin")
 		player_pos = wo.to_true_world(player_pos)
@@ -140,11 +149,15 @@ func _chebyshev_distance(a: Vector2i, b: Vector2i) -> int:
 func _queue_chunk_generation(coord: Vector2i, lod: int) -> void:
 	_building_set[coord] = true
 	if enable_threading:
-		WorkerThreadPool.add_task(_generate_chunk_threaded.bind(coord, lod, noise, max_height, chunk_size))
+		WorkerThreadPool.add_task(
+			_generate_chunk_threaded.bind(coord, lod, noise, max_height, chunk_size)
+		)
 	else:
 		_generate_chunk_threaded(coord, lod, noise, max_height, chunk_size)
 
-func _generate_chunk_threaded(coord: Vector2i, lod: int, n: FastNoiseLite, h_max: float, c_size: float) -> void:
+func _generate_chunk_threaded(
+	coord: Vector2i, lod: int, n: FastNoiseLite, h_max: float, c_size: float
+) -> void:
 	var res = 32 if lod == 0 else 16
 	var step = c_size / float(res)
 
@@ -263,7 +276,12 @@ func _instantiate_chunk_mesh(coord: Vector2i, lod: int, arrays: Array) -> void:
 
 	var mesh_inst = MeshInstance3D.new()
 	mesh_inst.mesh = arr_mesh
-	mesh_inst.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF if lod > 0 else GeometryInstance3D.SHADOW_CASTING_SETTING_ON
+	var shadow_mode = (
+		GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		if lod > 0
+		else GeometryInstance3D.SHADOW_CASTING_SETTING_ON
+	)
+	mesh_inst.cast_shadow = shadow_mode
 	chunk_root.add_child(mesh_inst)
 
 	# Collision Body (Layer 2 = terrain)

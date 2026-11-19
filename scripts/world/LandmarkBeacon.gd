@@ -13,7 +13,7 @@ func _init(p_grid: Vector2i = Vector2i.ZERO, p_true_pos: Vector3 = Vector3.ZERO)
 	true_world_position = p_true_pos
 
 func _ready() -> void:
-	_build_beacon()
+	build_beacon()
 	_update_local_pos()
 
 func _update_local_pos() -> void:
@@ -23,7 +23,8 @@ func _update_local_pos() -> void:
 	else:
 		position = true_world_position
 
-func _build_beacon() -> void:
+## Procedurally constructs the pylon and lattice mast geometries.
+func build_beacon() -> void:
 	name = "Beacon_%d_%d" % [grid_coord.x, grid_coord.y]
 
 	# 1. Base Concrete Pylon (4m wide, 6m tall)

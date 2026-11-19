@@ -39,15 +39,20 @@ func reset() -> void:
 	pending_shift = Vector3.ZERO
 	is_shift_pending = false
 
-func _physics_process(_delta: float) -> void:
+func _physics_process(delta: float) -> void:
+	check_origin_shift(delta)
+
+## Checks drone position and stages an origin shift if distance threshold is exceeded.
+func check_origin_shift(_delta: float = 0.0) -> void:
 	if not tracked_drone or not is_instance_valid(tracked_drone):
 		return
 
-	var cur_pos = tracked_drone.global_position if (tracked_drone.is_inside_tree() and tracked_drone.is_node_ready()) else tracked_drone.position
+	var is_ready_in_tree = tracked_drone.is_inside_tree() and tracked_drone.is_node_ready()
+	var cur_pos = tracked_drone.global_position if is_ready_in_tree else tracked_drone.position
 	var dist_horizontal = Vector2(cur_pos.x, cur_pos.z).length()
 
 	if dist_horizontal > shift_threshold and not is_shift_pending:
-		# Calculate chunk-aligned shift vector so chunks do not need fractional vertex re-interpolation
+		# Calculate chunk-aligned shift vector to avoid fractional vertex re-interpolation
 		var shift_x = roundf(cur_pos.x / chunk_alignment) * chunk_alignment
 		var shift_z = roundf(cur_pos.z / chunk_alignment) * chunk_alignment
 		var shift_vec = Vector3(shift_x, 0.0, shift_z)
@@ -63,7 +68,7 @@ func trigger_shift(shift_vec: Vector3) -> void:
 	is_shift_pending = true
 	global_world_offset += shift_vec
 
-	# Emit signal immediately to all registered non-physics world nodes (terrain, sky, props, camera)
+	# Emit signal to all registered non-physics world nodes (terrain, sky, props, camera)
 	origin_shifted.emit(shift_vec, global_world_offset)
 
 ## Consumed by tracked RigidBody3D inside _integrate_forces to safely reposition without impulse.

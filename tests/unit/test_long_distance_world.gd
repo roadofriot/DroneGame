@@ -2,8 +2,9 @@ extends SceneTree
 
 ## Dedicated Unit Test Suite for Phase 9: Long-Distance World (20+ km Flight)
 ## Validates WorldOrigin floating origin shifts, 64-bit coordinate accuracy,
-## simulated straight flight to 20 km (zero-NaN, local pos within ±2.5 km, true distance accurate to 1m),
-## TerrainStreamer bounded chunk counts with hysteresis, and selective collision gating.
+## simulated straight flight to 20 km (zero-NaN, local pos within ±2.5 km,
+## true distance accurate to 1m), TerrainStreamer bounded chunk counts with hysteresis,
+## and selective collision gating.
 
 const WorldOriginAutoload = preload("res://scripts/core/WorldOrigin.gd")
 const GameStateAutoload = preload("res://scripts/core/GameState.gd")
@@ -58,8 +59,8 @@ func test_ld01_world_origin_floating_shifts() -> bool:
 	dummy_drone.position = Vector3(2100.0, 15.0, 0.0)
 	wo.register_drone(dummy_drone)
 
-	# Run a physics process tick
-	wo._physics_process(0.016)
+	# Check drone position and trigger shift if distance threshold exceeded
+	wo.check_origin_shift(0.016)
 
 	if not wo.is_shift_pending:
 		printerr("  - FAIL: Origin shift was not staged when drone exceeded 2000m")
@@ -78,7 +79,10 @@ func test_ld01_world_origin_floating_shifts() -> bool:
 	# Reposition dummy drone as RigidBody3D would inside _integrate_forces
 	dummy_drone.position -= shift
 	if absf(dummy_drone.position.x - 52.0) > 0.1:
-		printerr("  - FAIL: Local drone pos should be reset near zero (52m), got: ", dummy_drone.position.x)
+		printerr(
+			"  - FAIL: Local drone pos should be reset near zero (52m), got: ",
+			dummy_drone.position.x
+		)
 		dummy_drone.free()
 		wo.free()
 		return false
@@ -122,7 +126,7 @@ func test_ld02_simulated_20km_flight() -> bool:
 		drone.position += flight_dir * step_distance
 		total_distance_flown += step_distance
 
-		wo._physics_process(dt)
+		wo.check_origin_shift(dt)
 
 		if wo.is_shift_pending:
 			var s = wo.consume_physics_shift()
@@ -158,21 +162,27 @@ func test_ld02_simulated_20km_flight() -> bool:
 	var true_pos = wo.to_true_world(drone.position)
 	var true_dist = true_pos.length()
 	if absf(true_dist - target_distance_m) > 1.0:
-		printerr("  - FAIL: True distance mismatch: expected %f, got %f" % [target_distance_m, true_dist])
+		printerr(
+			"  - FAIL: True distance mismatch: expected %f, got %f"
+			% [target_distance_m, true_dist]
+		)
 		drone.free()
 		wo.free()
 		return false
 
 	drone.free()
 	wo.free()
-	print("  - 20 km straight flight verified: %d origin shifts, max local pos %.1fm, true dist accurate to <1m (PASS)" % [shift_count, max_local_distance])
+	print(
+		"  - 20 km flight: %d shifts, max local pos %.1fm, true dist accurate to <1m (PASS)"
+		% [shift_count, max_local_distance]
+	)
 	return true
 
 func test_ld03_terrain_streamer_heightmap() -> bool:
 	print("[LD-03] Testing TerrainStreamer Heightmap Generation & Seed Repeatability...")
 	var ts = TerrainStreamer.new()
 	ts.noise_seed = 12345
-	ts._init_noise()
+	ts.init_noise()
 
 	var h1 = ts.get_height_at(150.0, 300.0)
 	var h2 = ts.get_height_at(150.0, 300.0)
@@ -228,12 +238,15 @@ func test_ld04_chunk_count_bounded_and_hysteresis() -> bool:
 
 	# Move player forward by 3 chunks (768m)
 	dummy.position = Vector3(0.0, 10.0, 768.0)
-	ts._update_streaming_grid()
+	ts.update_streaming_grid()
 
 	# Chunks with distance > unload_radius (3) must be marked for unload
 	var max_active_cap = (ts.unload_radius * 2 + 1) * (ts.unload_radius * 2 + 1)
 	if ts.active_chunks.size() > max_active_cap:
-		printerr("  - FAIL: Active chunk count exceeded hysteresis limit: ", ts.active_chunks.size())
+		printerr(
+			"  - FAIL: Active chunk count exceeded hysteresis limit: ",
+			ts.active_chunks.size()
+		)
 		dummy.queue_free()
 		ts.free()
 		return false
@@ -270,17 +283,23 @@ func test_ld05_selective_collision_gating() -> bool:
 	ts.active_chunks[Vector2i(1, 0)] = {"node": near_node, "body": near_body, "lod": 0}
 	ts.active_chunks[Vector2i(3, 0)] = {"node": far_node, "body": far_body, "lod": 1}
 
-	ts._update_streaming_grid()
+	ts.update_streaming_grid()
 
 	var pass_ok = true
 	# Near chunk (dist <= 1) should have collision layer 2
 	if near_body.collision_layer != 2:
-		printerr("  - FAIL: Near chunk should have active collision layer (2), got: ", near_body.collision_layer)
+		printerr(
+			"  - FAIL: Near chunk should have active collision layer (2), got: ",
+			near_body.collision_layer
+		)
 		pass_ok = false
 
 	# Far chunk (dist > 1) must have collision disabled (layer 0)
 	if far_body.collision_layer != 0:
-		printerr("  - FAIL: Far chunk (>1 distance) should have collision disabled (0), got: ", far_body.collision_layer)
+		printerr(
+			"  - FAIL: Far chunk (>1 distance) should have collision disabled (0), got: ",
+			far_body.collision_layer
+		)
 		pass_ok = false
 
 	ts.active_chunks.clear()
@@ -297,7 +316,7 @@ func test_ld05_selective_collision_gating() -> bool:
 func test_ld06_landmark_beacon_placement() -> bool:
 	print("[LD-06] Testing 1 km Landmark Beacon Grid Waypoint...")
 	var beacon = LandmarkBeacon.new(Vector2i(2, -3), Vector3(2000.0, 45.0, -3000.0))
-	beacon._build_beacon()
+	beacon.build_beacon()
 
 	if beacon.name != "Beacon_2_-3":
 		printerr("  - FAIL: Beacon naming mismatch: ", beacon.name)
@@ -305,7 +324,10 @@ func test_ld06_landmark_beacon_placement() -> bool:
 		return false
 
 	if beacon.get_child_count() < 3:
-		printerr("  - FAIL: Beacon visual hierarchy incomplete, child count: ", beacon.get_child_count())
+		printerr(
+			"  - FAIL: Beacon visual hierarchy incomplete, child count: ",
+			beacon.get_child_count()
+		)
 		beacon.free()
 		return false
 
