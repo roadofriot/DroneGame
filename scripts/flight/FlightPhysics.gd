@@ -163,24 +163,6 @@ func _ready() -> void:
 		input_router.stunt_requested.connect(_on_stunt_requested)
 		if input_router.has_signal("flip_pressed"):
 			input_router.flip_pressed.connect(_on_flip_pressed)
-
-	if Engine.has_singleton("WorldOrigin"):
-		var wo = Engine.get_singleton("WorldOrigin")
-		wo.register_drone(self)
-	if Engine.has_singleton("GameState"):
-		var gs = Engine.get_singleton("GameState")
-		gs.set_true_home(spawn_transform.origin)
-
-func _integrate_forces(state: PhysicsDirectBodyState3D) -> void:
-	if Engine.has_singleton("WorldOrigin"):
-		var wo = Engine.get_singleton("WorldOrigin")
-		var shift = wo.consume_physics_shift()
-		if not shift.is_zero_approx():
-			var t = state.transform
-			t.origin -= shift
-			state.transform = t
-			spawn_transform.origin -= shift
-
 		if input_router.has_signal("emergency_stop_pressed"):
 			input_router.emergency_stop_pressed.connect(_on_emergency_stop_pressed)
 		if input_router.has_signal("emergency_cut_requested"):
@@ -223,6 +205,23 @@ func _integrate_forces(state: PhysicsDirectBodyState3D) -> void:
 			add_child(stunt_engine)
 
 	body_entered.connect(_on_body_entered)
+
+	if Engine.has_singleton("WorldOrigin"):
+		var wo = Engine.get_singleton("WorldOrigin")
+		wo.register_drone(self)
+	if Engine.has_singleton("GameState"):
+		var gs = Engine.get_singleton("GameState")
+		gs.set_true_home(spawn_transform.origin)
+
+func _integrate_forces(state: PhysicsDirectBodyState3D) -> void:
+	if Engine.has_singleton("WorldOrigin"):
+		var wo = Engine.get_singleton("WorldOrigin")
+		var shift = wo.consume_physics_shift()
+		if not shift.is_zero_approx():
+			var t = state.transform
+			t.origin -= shift
+			state.transform = t
+			spawn_transform.origin -= shift
 
 func _load_profiles() -> void:
 	all_profiles = {
