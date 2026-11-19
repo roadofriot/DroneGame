@@ -135,6 +135,11 @@ custom_minimum_size = Vector2(0, 36)
 layout_mode = 2
 text = "Units: METRIC"
 
+[node name="BtnQuality" type="Button" parent="Card/VBox/TabContainer/Controls/Scroll/VBox"]
+custom_minimum_size = Vector2(0, 36)
+layout_mode = 2
+text = "Quality: MEDIUM"
+
 [node name="BtnTrimReset" type="Button" parent="Card/VBox/TabContainer/Controls/Scroll/VBox"]
 custom_minimum_size = Vector2(0, 36)
 layout_mode = 2

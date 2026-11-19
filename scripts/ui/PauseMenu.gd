@@ -16,30 +16,69 @@ var settings_service: SettingsService
 @onready var tab_container: TabContainer = get_node_or_null("Card/VBox/TabContainer")
 
 # Settings Controls - General / Tuning
-@onready var slider_fov: HSlider = get_node_or_null("Card/VBox/TabContainer/Controls/Scroll/VBox/HBoxFOV/SliderFOV")
-@onready var label_fov: Label = get_node_or_null("Card/VBox/TabContainer/Controls/Scroll/VBox/HBoxFOV/LabelFOVVal")
-@onready var btn_units: Button = get_node_or_null("Card/VBox/TabContainer/Controls/Scroll/VBox/BtnUnits")
-@onready var btn_trim_reset: Button = get_node_or_null("Card/VBox/TabContainer/Controls/Scroll/VBox/BtnTrimReset")
+@onready var slider_fov: HSlider = get_node_or_null(
+	"Card/VBox/TabContainer/Controls/Scroll/VBox/HBoxFOV/SliderFOV"
+)
+@onready var label_fov: Label = get_node_or_null(
+	"Card/VBox/TabContainer/Controls/Scroll/VBox/HBoxFOV/LabelFOVVal"
+)
+@onready var btn_units: Button = get_node_or_null(
+	"Card/VBox/TabContainer/Controls/Scroll/VBox/BtnUnits"
+)
+@onready var btn_quality: Button = get_node_or_null(
+	"Card/VBox/TabContainer/Controls/Scroll/VBox/BtnQuality"
+)
+@onready var btn_trim_reset: Button = get_node_or_null(
+	"Card/VBox/TabContainer/Controls/Scroll/VBox/BtnTrimReset"
+)
 
 # Inverts
-@onready var check_inv_pitch: CheckBox = get_node_or_null("Card/VBox/TabContainer/Controls/Scroll/VBox/GridInverts/CheckInvPitch")
-@onready var check_inv_roll: CheckBox = get_node_or_null("Card/VBox/TabContainer/Controls/Scroll/VBox/GridInverts/CheckInvRoll")
-@onready var check_inv_yaw: CheckBox = get_node_or_null("Card/VBox/TabContainer/Controls/Scroll/VBox/GridInverts/CheckInvYaw")
-@onready var check_inv_throttle: CheckBox = get_node_or_null("Card/VBox/TabContainer/Controls/Scroll/VBox/GridInverts/CheckInvThrottle")
+@onready var check_inv_pitch: CheckBox = get_node_or_null(
+	"Card/VBox/TabContainer/Controls/Scroll/VBox/GridInverts/CheckInvPitch"
+)
+@onready var check_inv_roll: CheckBox = get_node_or_null(
+	"Card/VBox/TabContainer/Controls/Scroll/VBox/GridInverts/CheckInvRoll"
+)
+@onready var check_inv_yaw: CheckBox = get_node_or_null(
+	"Card/VBox/TabContainer/Controls/Scroll/VBox/GridInverts/CheckInvYaw"
+)
+@onready var check_inv_throttle: CheckBox = get_node_or_null(
+	"Card/VBox/TabContainer/Controls/Scroll/VBox/GridInverts/CheckInvThrottle"
+)
 
 # Per-Profile Expo & Deadzone Sliders
-@onready var slider_expo_cine: HSlider = get_node_or_null("Card/VBox/TabContainer/Tuning/Scroll/VBox/ExpoCine/Slider")
-@onready var slider_dead_cine: HSlider = get_node_or_null("Card/VBox/TabContainer/Tuning/Scroll/VBox/DeadCine/Slider")
-@onready var slider_expo_norm: HSlider = get_node_or_null("Card/VBox/TabContainer/Tuning/Scroll/VBox/ExpoNorm/Slider")
-@onready var slider_dead_norm: HSlider = get_node_or_null("Card/VBox/TabContainer/Tuning/Scroll/VBox/DeadNorm/Slider")
-@onready var slider_expo_sport: HSlider = get_node_or_null("Card/VBox/TabContainer/Tuning/Scroll/VBox/ExpoSport/Slider")
-@onready var slider_dead_sport: HSlider = get_node_or_null("Card/VBox/TabContainer/Tuning/Scroll/VBox/DeadSport/Slider")
-@onready var slider_expo_acro: HSlider = get_node_or_null("Card/VBox/TabContainer/Tuning/Scroll/VBox/ExpoAcro/Slider")
-@onready var slider_dead_acro: HSlider = get_node_or_null("Card/VBox/TabContainer/Tuning/Scroll/VBox/DeadAcro/Slider")
+@onready var slider_expo_cine: HSlider = get_node_or_null(
+	"Card/VBox/TabContainer/Tuning/Scroll/VBox/ExpoCine/Slider"
+)
+@onready var slider_dead_cine: HSlider = get_node_or_null(
+	"Card/VBox/TabContainer/Tuning/Scroll/VBox/DeadCine/Slider"
+)
+@onready var slider_expo_norm: HSlider = get_node_or_null(
+	"Card/VBox/TabContainer/Tuning/Scroll/VBox/ExpoNorm/Slider"
+)
+@onready var slider_dead_norm: HSlider = get_node_or_null(
+	"Card/VBox/TabContainer/Tuning/Scroll/VBox/DeadNorm/Slider"
+)
+@onready var slider_expo_sport: HSlider = get_node_or_null(
+	"Card/VBox/TabContainer/Tuning/Scroll/VBox/ExpoSport/Slider"
+)
+@onready var slider_dead_sport: HSlider = get_node_or_null(
+	"Card/VBox/TabContainer/Tuning/Scroll/VBox/DeadSport/Slider"
+)
+@onready var slider_expo_acro: HSlider = get_node_or_null(
+	"Card/VBox/TabContainer/Tuning/Scroll/VBox/ExpoAcro/Slider"
+)
+@onready var slider_dead_acro: HSlider = get_node_or_null(
+	"Card/VBox/TabContainer/Tuning/Scroll/VBox/DeadAcro/Slider"
+)
 
 # Rebinding UI
-@onready var rebind_container: VBoxContainer = get_node_or_null("Card/VBox/TabContainer/Keybinds/Scroll/RebindList")
-@onready var label_rebind_status: Label = get_node_or_null("Card/VBox/TabContainer/Keybinds/LabelRebindStatus")
+@onready var rebind_container: VBoxContainer = get_node_or_null(
+	"Card/VBox/TabContainer/Keybinds/Scroll/RebindList"
+)
+@onready var label_rebind_status: Label = get_node_or_null(
+	"Card/VBox/TabContainer/Keybinds/LabelRebindStatus"
+)
 
 var is_rebinding: bool = false
 var rebinding_action: String = ""
@@ -57,6 +96,10 @@ func _ready() -> void:
 		btn_trim_reset.pressed.connect(_on_trim_reset_pressed)
 	if btn_units:
 		btn_units.pressed.connect(_on_btn_units_pressed)
+	if btn_quality:
+		var cur_q = settings_service.get_current_preset_key().to_upper()
+		btn_quality.text = "Quality: %s" % cur_q
+		btn_quality.pressed.connect(_on_btn_quality_pressed)
 
 	_setup_tuning_ui()
 	_setup_inverts_ui()
@@ -69,47 +112,83 @@ func _setup_tuning_ui() -> void:
 
 	if slider_expo_cine:
 		slider_expo_cine.value = settings_service.get_profile_expo("cine")
-		slider_expo_cine.value_changed.connect(func(v): settings_service.set_profile_expo("cine", v); settings_service.save_settings())
+		slider_expo_cine.value_changed.connect(func(v):
+			settings_service.set_profile_expo("cine", v)
+			settings_service.save_settings()
+		)
 	if slider_dead_cine:
 		slider_dead_cine.value = settings_service.get_profile_deadzone("cine")
-		slider_dead_cine.value_changed.connect(func(v): settings_service.set_profile_deadzone("cine", v); settings_service.save_settings())
+		slider_dead_cine.value_changed.connect(func(v):
+			settings_service.set_profile_deadzone("cine", v)
+			settings_service.save_settings()
+		)
 
 	if slider_expo_norm:
 		slider_expo_norm.value = settings_service.get_profile_expo("normal")
-		slider_expo_norm.value_changed.connect(func(v): settings_service.set_profile_expo("normal", v); settings_service.save_settings())
+		slider_expo_norm.value_changed.connect(func(v):
+			settings_service.set_profile_expo("normal", v)
+			settings_service.save_settings()
+		)
 	if slider_dead_norm:
 		slider_dead_norm.value = settings_service.get_profile_deadzone("normal")
-		slider_dead_norm.value_changed.connect(func(v): settings_service.set_profile_deadzone("normal", v); settings_service.save_settings())
+		slider_dead_norm.value_changed.connect(func(v):
+			settings_service.set_profile_deadzone("normal", v)
+			settings_service.save_settings()
+		)
 
 	if slider_expo_sport:
 		slider_expo_sport.value = settings_service.get_profile_expo("sport")
-		slider_expo_sport.value_changed.connect(func(v): settings_service.set_profile_expo("sport", v); settings_service.save_settings())
+		slider_expo_sport.value_changed.connect(func(v):
+			settings_service.set_profile_expo("sport", v)
+			settings_service.save_settings()
+		)
 	if slider_dead_sport:
 		slider_dead_sport.value = settings_service.get_profile_deadzone("sport")
-		slider_dead_sport.value_changed.connect(func(v): settings_service.set_profile_deadzone("sport", v); settings_service.save_settings())
+		slider_dead_sport.value_changed.connect(func(v):
+			settings_service.set_profile_deadzone("sport", v)
+			settings_service.save_settings()
+		)
 
 	if slider_expo_acro:
 		slider_expo_acro.value = settings_service.get_profile_expo("acro")
-		slider_expo_acro.value_changed.connect(func(v): settings_service.set_profile_expo("acro", v); settings_service.save_settings())
+		slider_expo_acro.value_changed.connect(func(v):
+			settings_service.set_profile_expo("acro", v)
+			settings_service.save_settings()
+		)
 	if slider_dead_acro:
 		slider_dead_acro.value = settings_service.get_profile_deadzone("acro")
-		slider_dead_acro.value_changed.connect(func(v): settings_service.set_profile_deadzone("acro", v); settings_service.save_settings())
+		slider_dead_acro.value_changed.connect(func(v):
+			settings_service.set_profile_deadzone("acro", v)
+			settings_service.save_settings()
+		)
 
 func _setup_inverts_ui() -> void:
 	if not settings_service:
 		return
 	if check_inv_pitch:
 		check_inv_pitch.button_pressed = settings_service.is_axis_inverted("pitch")
-		check_inv_pitch.toggled.connect(func(b): settings_service.set_axis_inverted("pitch", b); settings_service.save_settings())
+		check_inv_pitch.toggled.connect(func(b):
+			settings_service.set_axis_inverted("pitch", b)
+			settings_service.save_settings()
+		)
 	if check_inv_roll:
 		check_inv_roll.button_pressed = settings_service.is_axis_inverted("roll")
-		check_inv_roll.toggled.connect(func(b): settings_service.set_axis_inverted("roll", b); settings_service.save_settings())
+		check_inv_roll.toggled.connect(func(b):
+			settings_service.set_axis_inverted("roll", b)
+			settings_service.save_settings()
+		)
 	if check_inv_yaw:
 		check_inv_yaw.button_pressed = settings_service.is_axis_inverted("yaw")
-		check_inv_yaw.toggled.connect(func(b): settings_service.set_axis_inverted("yaw", b); settings_service.save_settings())
+		check_inv_yaw.toggled.connect(func(b):
+			settings_service.set_axis_inverted("yaw", b)
+			settings_service.save_settings()
+		)
 	if check_inv_throttle:
 		check_inv_throttle.button_pressed = settings_service.is_axis_inverted("throttle")
-		check_inv_throttle.toggled.connect(func(b): settings_service.set_axis_inverted("throttle", b); settings_service.save_settings())
+		check_inv_throttle.toggled.connect(func(b):
+			settings_service.set_axis_inverted("throttle", b)
+			settings_service.save_settings()
+		)
 
 func _setup_fov_ui() -> void:
 	if not settings_service:
@@ -135,6 +214,22 @@ func _on_btn_units_pressed() -> void:
 	settings_service.save_settings()
 	if btn_units:
 		btn_units.text = "Units: %s" % new_u.to_upper()
+
+func _on_btn_quality_pressed() -> void:
+	if not settings_service:
+		return
+	var cur = settings_service.get_current_preset_key().to_lower()
+	var next_q = "medium"
+	if cur == "low":
+		next_q = "medium"
+	elif cur == "medium":
+		next_q = "high"
+	else:
+		next_q = "low"
+	settings_service.apply_quality_preset(next_q, get_viewport())
+	settings_service.save_settings()
+	if btn_quality:
+		btn_quality.text = "Quality: %s" % next_q.to_upper()
 
 func _on_trim_reset_pressed() -> void:
 	if settings_service:
@@ -197,7 +292,11 @@ func _unhandled_input(event: InputEvent) -> void:
 
 			var ok = settings_service.rebind_action(rebinding_action, event)
 			if ok and label_rebind_status:
-				label_rebind_status.text = "✓ Successfully rebound '%s' to %s" % [rebinding_action, OS.get_keycode_string(event.physical_keycode if event.physical_keycode != 0 else event.keycode)]
+				var kc = event.physical_keycode if event.physical_keycode != 0 else event.keycode
+				var key_name = OS.get_keycode_string(kc)
+				label_rebind_status.text = "✓ Successfully rebound '%s' to %s" % [
+					rebinding_action, key_name
+				]
 			is_rebinding = false
 			rebinding_action = ""
 			_populate_rebinding_ui()

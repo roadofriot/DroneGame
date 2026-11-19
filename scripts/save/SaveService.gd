@@ -16,8 +16,8 @@ static func get_default_save_data() -> Dictionary:
 			"level": 1,
 			"current_xp": 0,
 			"coins_banked": 0,
-			"equipped_drone": "falcon_v1",
-			"unlocked_drones": ["falcon_v1"]
+			"equipped_drone": "scout",
+			"unlocked_drones": ["scout"]
 		},
 		"mission_records": {},
 		"claimed_run_hashes": [],
