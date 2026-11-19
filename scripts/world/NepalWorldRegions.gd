@@ -405,6 +405,88 @@ const STAGES: Array[Dictionary] = [
 			Vector3(16400.0, 615.0, -12350.0)
 		],
 		"landing_pad_position": Vector3(16500.0, 620.1, -12500.0)
+	},
+	{
+		"id": "stage_09_annapurna_sanctuary",
+		"stage_number": 9,
+		"name": "Annapurna Sanctuary",
+		"region": "Annapurna Massif, Nepal",
+		"description": "High glacial amphitheater ringed by Machapuchare and Annapurna peaks.",
+		"difficulty": "Master",
+		"unlocked_by_default": false,
+		"required_previous_stage": "stage_08_everest_expedition",
+		"target_coordinates": Vector3(-4500.0, 480.0, -11000.0),
+		"arrival_radius": 60.0,
+		"biome": "alpine_basin",
+		"terrain_color": Color(0.72, 0.78, 0.86),
+		"fog_color": Color(0.80, 0.88, 0.95),
+		"landmarks": [
+			{
+				"id": "machapuchare_ridge",
+				"name": "Machapuchare Fishtail Ridge",
+				"location": "Annapurna Range, Nepal",
+				"position": Vector3(-4300.0, 510.0, -10800.0),
+				"discovery_radius": 45.0,
+				"xp_reward": 550,
+				"coin_reward": 1100
+			},
+			{
+				"id": "annapurna_base_camp",
+				"name": "Annapurna Base Camp Sanctuary",
+				"location": "Annapurna Range, Nepal",
+				"position": Vector3(-4500.0, 480.0, -11000.0),
+				"discovery_radius": 50.0,
+				"xp_reward": 500,
+				"coin_reward": 950
+			}
+		],
+		"checkpoints": [
+			Vector3(-2800.0, 180.0, -8200.0),
+			Vector3(-3400.0, 310.0, -9200.0),
+			Vector3(-4100.0, 420.0, -10200.0)
+		],
+		"landing_pad_position": Vector3(-4500.0, 480.1, -11000.0)
+	},
+	{
+		"id": "stage_10_mustang_kingdom",
+		"stage_number": 10,
+		"name": "Mustang - Lo Manthang",
+		"region": "Upper Mustang Desert, Nepal",
+		"description": "Ancient walled capital, arid red clay cliffs, and sacred sky caves.",
+		"difficulty": "Grand Master",
+		"unlocked_by_default": false,
+		"required_previous_stage": "stage_09_annapurna_sanctuary",
+		"target_coordinates": Vector3(-1500.0, 390.0, -16000.0),
+		"arrival_radius": 65.0,
+		"biome": "canyon_desert",
+		"terrain_color": Color(0.78, 0.52, 0.38),
+		"fog_color": Color(0.88, 0.80, 0.70),
+		"landmarks": [
+			{
+				"id": "lo_manthang_fortress",
+				"name": "Ancient Lo Manthang Walled Fortress",
+				"location": "Upper Mustang, Nepal",
+				"position": Vector3(-1500.0, 390.0, -16000.0),
+				"discovery_radius": 55.0,
+				"xp_reward": 700,
+				"coin_reward": 1500
+			},
+			{
+				"id": "mustang_sky_caves",
+				"name": "Mustang Cliffside Sky Caves",
+				"location": "Upper Mustang, Nepal",
+				"position": Vector3(-1350.0, 420.0, -15700.0),
+				"discovery_radius": 45.0,
+				"xp_reward": 600,
+				"coin_reward": 1200
+			}
+		],
+		"checkpoints": [
+			Vector3(-3200.0, 440.0, -12500.0),
+			Vector3(-2400.0, 410.0, -14200.0),
+			Vector3(-1800.0, 395.0, -15300.0)
+		],
+		"landing_pad_position": Vector3(-1500.0, 390.1, -16000.0)
 	}
 ]
 

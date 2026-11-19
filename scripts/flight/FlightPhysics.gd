@@ -48,11 +48,12 @@ enum DroneState {
 @export var arm_length: float = 0.22 # Motor arm moment length in meters
 @export var max_thrust_per_motor: float = 7.0 # 4 * 7 = 28 N (TWR ~ 2.28)
 @export var motor_spool_speed: float = 20.0 # Spool response factor
-@export var linear_drag: float = 0.55
+@export var linear_drag: float = 0.30
 @export var angular_drag: float = 4.0
 @export var ground_effect_dist: float = 1.5
 @export var ground_effect_mult: float = 0.25
 @export var active_wind: Vector3 = Vector3.ZERO # Environment wind vector (m/s)
+@export var geofence_enabled: bool = true
 
 # Flight State & State Machine
 var state_machine: FlightStateMachine = null
@@ -593,12 +594,12 @@ func _process_flying(delta: float) -> void:
 			in_pitch = clampf(in_pitch, -1.0, 1.0)
 			in_roll = clampf(in_roll, -1.0, 1.0)
 
-	# Apply Pilot Boost (x1.4 tilt and climb)
+	# Apply Pilot Boost (x1.6 tilt and climb)
 	if is_boosted:
-		in_pitch = clampf(in_pitch * 1.4, -1.0, 1.0)
-		in_roll = clampf(in_roll * 1.4, -1.0, 1.0)
+		in_pitch = clampf(in_pitch * 1.6, -1.0, 1.0)
+		in_roll = clampf(in_roll * 1.6, -1.0, 1.0)
 		if in_throttle > 0.0:
-			in_throttle = clampf(in_throttle * 1.4, 0.0, 1.0)
+			in_throttle = clampf(in_throttle * 1.5, 0.0, 1.0)
 
 	# Enforce Flight Boundaries (Ceiling and Horizontal Geofence)
 	if altitude_agl >= max_flight_altitude:
@@ -607,7 +608,7 @@ func _process_flying(delta: float) -> void:
 		flight_boundary_reached.emit("MAX_ALTITUDE")
 
 	var dist_home = get_home_distance()
-	if dist_home >= max_horizontal_range:
+	if geofence_enabled and dist_home >= max_horizontal_range:
 		var home_flat = Vector2(spawn_transform.origin.x, spawn_transform.origin.z)
 		var cur_pos = global_position if is_inside_tree() else position
 		var cur_flat = Vector2(cur_pos.x, cur_pos.z)
@@ -797,6 +798,10 @@ func cancel_rth() -> void:
 		drone_state_changed.emit("FLYING")
 		rth_state_changed.emit(false, get_home_distance())
 		print("[FLIGHT] RTH_CANCELLED — Manual Control Restored")
+
+func toggle_boost() -> bool:
+	is_boosted = not is_boosted
+	return is_boosted
 
 func _on_emergency_stop_pressed() -> void:
 	print("[SAFETY] EMERGENCY_STOP_TRIGGERED — Zeroing motors immediately")

@@ -70,7 +70,9 @@ func _init_biome_materials() -> void:
 		{"name": "subtropical_forest", "color": Color(0.20, 0.42, 0.18), "rough": 0.85},
 		{"name": "ancient_urban", "color": Color(0.40, 0.34, 0.26), "rough": 0.9},
 		{"name": "alpine_glacier", "color": Color(0.62, 0.68, 0.75), "rough": 0.5},
-		{"name": "everest_summit", "color": Color(0.92, 0.94, 0.98), "rough": 0.35}
+		{"name": "everest_summit", "color": Color(0.92, 0.94, 0.98), "rough": 0.35},
+		{"name": "alpine_basin", "color": Color(0.72, 0.78, 0.86), "rough": 0.45},
+		{"name": "canyon_desert", "color": Color(0.78, 0.52, 0.38), "rough": 0.9}
 	]
 	for b in biomes:
 		var mat = StandardMaterial3D.new()
@@ -117,6 +119,12 @@ func get_height_at(world_x: float, world_z: float) -> float:
 		"everest_summit":
 			# High Sagarmatha ridgelines and summit (580 to 880m)
 			return 580.0 + base_val * 280.0
+		"alpine_basin":
+			# High glacial amphitheater of Annapurna (420 to 580m)
+			return 420.0 + base_val * 160.0
+		"canyon_desert":
+			# Arid high desert plateau of Mustang (350 to 460m)
+			return 350.0 + base_val * 110.0
 		_:
 			return base_val * 30.0
 
@@ -409,21 +417,22 @@ func _spawn_stage_landing_pad(stage_def: Dictionary) -> void:
 	ring_inst.position = Vector3(0.0, 0.25, 0.0)
 	pad_root.add_child(ring_inst)
 
-	# Vertical landing zone light guide
+	# Vertical landing zone light guide (Sky beacon)
 	var beam = CylinderMesh.new()
-	beam.top_radius = 1.2
-	beam.bottom_radius = 0.8
-	beam.height = 40.0
+	beam.top_radius = 2.0
+	beam.bottom_radius = 1.0
+	beam.height = 200.0
 	var b_mat = StandardMaterial3D.new()
 	b_mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
-	b_mat.albedo_color = Color(0.2, 0.9, 1.0, 0.2)
+	b_mat.albedo_color = Color(0.2, 0.9, 1.0, 0.35)
 	b_mat.emission_enabled = true
 	b_mat.emission = Color(0.2, 0.9, 1.0)
+	b_mat.emission_energy_multiplier = 4.0
 	beam.material = b_mat
 
 	var beam_inst = MeshInstance3D.new()
 	beam_inst.mesh = beam
-	beam_inst.position = Vector3(0.0, 20.0, 0.0)
+	beam_inst.position = Vector3(0.0, 100.0, 0.0)
 	pad_root.add_child(beam_inst)
 
 	pad_root.position = pad_pos

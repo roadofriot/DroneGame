@@ -82,6 +82,7 @@ var settings_service: SettingsService
 @onready var btn_brake: Button = get_node_or_null("CenterControls/ActionHBox/BtnBrake")
 @onready var btn_cam_toggle: Button = get_node_or_null("CenterControls/ActionHBox/BtnCamToggle")
 @onready var btn_flip: Button = get_node_or_null("CenterControls/ActionHBox/BtnFlip")
+@onready var btn_boost: Button = get_node_or_null("CenterControls/ActionHBox/BtnBoost")
 
 # Right Telemetry & Sensor Cluster
 @onready var label_h: Label = get_node_or_null("RightTelemetryCluster/TelemetryBox/VBox/LabelH")
@@ -171,6 +172,8 @@ func _ready() -> void:
 		btn_cam_toggle.pressed.connect(_on_btn_cam_toggle_pressed)
 	if btn_flip:
 		btn_flip.pressed.connect(_on_btn_flip_pressed)
+	if btn_boost:
+		btn_boost.pressed.connect(_on_btn_boost_pressed)
 
 	# Mode Selectors
 	if btn_mode_cine:
@@ -201,7 +204,11 @@ func _ready() -> void:
 	if btn_reset:
 		btn_reset.pressed.connect(_on_btn_reset_pressed)
 	if btn_worlds:
-		btn_worlds.pressed.connect(func(): world_select_requested.emit())
+		btn_worlds.pressed.connect(func():
+			if settings_modal:
+				settings_modal.visible = false
+			world_select_requested.emit()
+		)
 	if btn_close_settings:
 		btn_close_settings.pressed.connect(func():
 			if settings_modal:
@@ -405,6 +412,18 @@ func _on_btn_flip_pressed() -> void:
 			_show_banner("🤸 360° FLIP EXECUTING", 2.0)
 		else:
 			_show_banner("⚠️ FLIP REFUSED (Safety Check)", 2.0)
+
+func _on_btn_boost_pressed() -> void:
+	if flight_physics and flight_physics.has_method("toggle_boost"):
+		var boosted = flight_physics.toggle_boost()
+		if btn_boost:
+			btn_boost.text = "⚡ BOOST: ON" if boosted else "⚡ Boost"
+			btn_boost.add_theme_color_override(
+				"font_color",
+				Color(1.0, 0.85, 0.2) if boosted else Color(1.0, 0.45, 0.1)
+			)
+		var banner = "⚡ PILOT BOOST ACTIVE (1.6x SPEED & CLIMB)" if boosted else "BOOST OFF"
+		_show_banner(banner, 2.0)
 
 # -----------------------------------------------------------------------------
 # Settings Drawer

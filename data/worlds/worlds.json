@@ -168,6 +168,34 @@
       "wind_vector": [-0.8, 0.0, 0.7],
       "gravity_scale": 1.0,
       "missions": []
+    },
+    {
+      "id": "stage_09_annapurna_sanctuary",
+      "name": "Stage 09: Annapurna Sanctuary",
+      "region": "Annapurna Massif, Nepal",
+      "description": "High glacial amphitheater ringed by Machapuchare and Annapurna peaks.",
+      "difficulty": "Master",
+      "unlocked_by_default": false,
+      "required_level": 9,
+      "scene_path": "res://scenes/worlds/NepalAdventureWorld.tscn",
+      "spawn_position": [-4500.0, 480.1, -11000.0],
+      "wind_vector": [-0.7, 0.0, 0.6],
+      "gravity_scale": 1.0,
+      "missions": []
+    },
+    {
+      "id": "stage_10_mustang_kingdom",
+      "name": "Stage 10: Mustang - Lo Manthang",
+      "region": "Upper Mustang Desert, Nepal",
+      "description": "Ancient walled capital, arid red clay cliffs, and sacred sky caves.",
+      "difficulty": "Grand Master",
+      "unlocked_by_default": false,
+      "required_level": 10,
+      "scene_path": "res://scenes/worlds/NepalAdventureWorld.tscn",
+      "spawn_position": [-1500.0, 390.1, -16000.0],
+      "wind_vector": [0.5, 0.0, -0.4],
+      "gravity_scale": 1.0,
+      "missions": []
     }
   ]
 }

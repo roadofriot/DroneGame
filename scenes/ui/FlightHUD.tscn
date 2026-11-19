@@ -161,11 +161,11 @@ theme_override_constants/separation = 8
 alignment = 1
 
 [node name="BtnLocation" type="Button" parent="TopBar/HBox"]
-custom_minimum_size = Vector2(36, 32)
+custom_minimum_size = Vector2(92, 38)
 layout_mode = 2
 theme_override_styles/normal = SubResource("StyleBoxFlat_Pill")
 theme_override_font_sizes/font_size = 13
-text = "📍 World"
+text = "🌍 Worlds"
 
 [node name="ModeBadgePill" type="PanelContainer" parent="TopBar/HBox"]
 layout_mode = 2
@@ -242,11 +242,11 @@ layout_mode = 2
 size_flags_horizontal = 3
 
 [node name="BtnMenu" type="Button" parent="TopBar/HBox"]
-custom_minimum_size = Vector2(40, 32)
+custom_minimum_size = Vector2(92, 38)
 layout_mode = 2
 theme_override_styles/normal = SubResource("StyleBoxFlat_Pill")
-theme_override_font_sizes/font_size = 15
-text = "···"
+theme_override_font_sizes/font_size = 13
+text = "⚙️ Options"
 
 [node name="HeadingStrip" type="Control" parent="."]
 custom_minimum_size = Vector2(340, 30)
@@ -444,6 +444,14 @@ theme_override_styles/normal = SubResource("StyleBoxFlat_ActionBtn")
 theme_override_colors/font_color = Color(1, 0.85, 0.25, 1)
 theme_override_font_sizes/font_size = 12
 text = "🤸 Flip"
+
+[node name="BtnBoost" type="Button" parent="CenterControls/ActionHBox"]
+custom_minimum_size = Vector2(75, 42)
+layout_mode = 2
+theme_override_styles/normal = SubResource("StyleBoxFlat_ActionBtn")
+theme_override_colors/font_color = Color(1, 0.45, 0.1, 1)
+theme_override_font_sizes/font_size = 12
+text = "⚡ Boost"
 
 [node name="BtnCamToggle" type="Button" parent="CenterControls/ActionHBox"]
 custom_minimum_size = Vector2(44, 42)

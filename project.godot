@@ -13,7 +13,7 @@ config_version=5
 config/name="MindSparQ Drone Simulator"
 config/description="Physics-based 3D Drone Simulator with twin-stick flight dynamics, authored environments, and telemetry HUD."
 config/version="0.1.0-alpha"
-run/main_scene="res://scenes/flight/FlightWorld.tscn"
+run/main_scene="res://scenes/worlds/NepalAdventureWorld.tscn"
 config/features=PackedStringArray("4.3", "Forward Plus")
 config/icon="res://icon.svg"
 

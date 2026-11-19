@@ -92,6 +92,21 @@ func _ready() -> void:
 	# Initialize Adventure Navigation Manager if present
 	if adventure_nav:
 		adventure_nav.target_drone = quadcopter
+		if quadcopter:
+			quadcopter.geofence_enabled = false
+			quadcopter.max_flight_altitude = 2500.0
+			quadcopter.max_horizontal_range = 50000.0
+		var gs_active = get_node_or_null("/root/GameState")
+		if gs_active and gs_active.active_adventure_stage != "":
+			var st_key = gs_active.active_adventure_stage
+			var next_st = NepalWorldRegions.get_next_stage(st_key)
+			var target_id = next_st.get("id", "stage_02_lumbini")
+			adventure_nav.setup_active_journey(st_key, target_id)
+			var st_def = NepalWorldRegions.get_stage_by_id(st_key)
+			var pad_p: Vector3 = st_def.get("landing_pad_position", Vector3(0, 12.1, 0))
+			if quadcopter:
+				quadcopter.position = pad_p
+				quadcopter.reset_to_pad()
 		if flight_hud:
 			var lm_sig = adventure_nav.landmark_discovered
 			if not lm_sig.is_connected(flight_hud.show_landmark_discovered_banner):
@@ -303,14 +318,13 @@ func _on_world_selected(world_id: String) -> void:
 		var target_scene = def["scene_path"]
 		if world_id.begins_with("stage_") or world_id == "nepal_adventure":
 			var stage_key = "stage_01_butwal" if world_id == "nepal_adventure" else world_id
-			if Engine.has_singleton("GameState"):
-				var gs = Engine.get_singleton("GameState")
+			var gs = get_node_or_null("/root/GameState")
+			if gs:
 				gs.active_adventure_stage = stage_key
 			if scene_file_path.ends_with("NepalAdventureWorld.tscn") and adventure_nav:
 				var next_st = NepalWorldRegions.get_next_stage(stage_key)
 				var target_id = next_st.get("id", "stage_02_lumbini")
-				adventure_nav.active_stage_id = stage_key
-				adventure_nav.target_stage_id = target_id
+				adventure_nav.setup_active_journey(stage_key, target_id)
 				var st_def = NepalWorldRegions.get_stage_by_id(stage_key)
 				var sp: Vector3 = st_def.get("landing_pad_position", Vector3(0, 12.1, 0))
 				if quadcopter:
