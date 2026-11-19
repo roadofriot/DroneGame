@@ -30,7 +30,9 @@ signal world_select_requested
 var settings_service: SettingsService
 
 # Procedural Vector HUD Elements
-@onready var artificial_horizon: ArtificialHorizon = get_node_or_null("CenterCluster/ArtificialHorizon")
+@onready var artificial_horizon: ArtificialHorizon = get_node_or_null(
+	"CenterCluster/ArtificialHorizon"
+)
 @onready var heading_strip: HeadingStrip = get_node_or_null("HeadingStrip")
 @onready var home_arrow: HomeArrow = get_node_or_null("RightTelemetryCluster/HomeArrow")
 
@@ -42,12 +44,18 @@ var settings_service: SettingsService
 @onready var btn_location: Button = get_node_or_null("TopBar/HBox/BtnLocation")
 @onready var label_gps: Label = get_node_or_null("TopBar/HBox/GPSPill/LabelGPS")
 @onready var label_battery: Label = get_node_or_null("TopBar/HBox/BatteryPill/LabelBattery")
-@onready var battery_progress_bar: ProgressBar = get_node_or_null("TopBar/HBox/BatteryPill/BatteryProgressBar")
+@onready var battery_progress_bar: ProgressBar = get_node_or_null(
+	"TopBar/HBox/BatteryPill/BatteryProgressBar"
+)
 @onready var label_signal: Label = get_node_or_null("TopBar/HBox/SignalPill/LabelSignal")
 @onready var label_satellites: Label = get_node_or_null("TopBar/HBox/SatPill/LabelSatellites")
-@onready var label_camera_status: Label = get_node_or_null("TopBar/HBox/CamStatusPill/LabelCameraStatus")
+@onready var label_camera_status: Label = get_node_or_null(
+	"TopBar/HBox/CamStatusPill/LabelCameraStatus"
+)
 @onready var label_mode_badge: Label = get_node_or_null("TopBar/HBox/ModeBadgePill/LabelModeBadge")
-@onready var label_state_badge: Label = get_node_or_null("TopBar/HBox/StateBadgePill/LabelStateBadge")
+@onready var label_state_badge: Label = get_node_or_null(
+	"TopBar/HBox/StateBadgePill/LabelStateBadge"
+)
 @onready var btn_menu: Button = get_node_or_null("TopBar/HBox/BtnMenu")
 
 # Left Zoom / Gimbal Controls
@@ -56,10 +64,18 @@ var settings_service: SettingsService
 @onready var btn_zoom_out: Button = get_node_or_null("LeftZoomColumn/BtnZoomOut")
 
 # Center Controls
-@onready var btn_mode_cine: Button = get_node_or_null("CenterControls/ModeContainer/ModeHBox/BtnModeCine")
-@onready var btn_mode_normal: Button = get_node_or_null("CenterControls/ModeContainer/ModeHBox/BtnModeNormal")
-@onready var btn_mode_sport: Button = get_node_or_null("CenterControls/ModeContainer/ModeHBox/BtnModeSport")
-@onready var btn_mode_cycle: Button = get_node_or_null("CenterControls/ModeContainer/ModeHBox/BtnModeCycle")
+@onready var btn_mode_cine: Button = get_node_or_null(
+	"CenterControls/ModeContainer/ModeHBox/BtnModeCine"
+)
+@onready var btn_mode_normal: Button = get_node_or_null(
+	"CenterControls/ModeContainer/ModeHBox/BtnModeNormal"
+)
+@onready var btn_mode_sport: Button = get_node_or_null(
+	"CenterControls/ModeContainer/ModeHBox/BtnModeSport"
+)
+@onready var btn_mode_cycle: Button = get_node_or_null(
+	"CenterControls/ModeContainer/ModeHBox/BtnModeCycle"
+)
 @onready var btn_failsafe: Button = get_node_or_null("CenterControls/ActionHBox/BtnFailsafe")
 @onready var btn_takeoff: Button = get_node_or_null("CenterControls/ActionHBox/BtnTakeoff")
 @onready var btn_rth: Button = get_node_or_null("CenterControls/ActionHBox/BtnRTH")
@@ -72,8 +88,12 @@ var settings_service: SettingsService
 @onready var label_hs: Label = get_node_or_null("RightTelemetryCluster/TelemetryBox/VBox/LabelHS")
 @onready var label_d: Label = get_node_or_null("RightTelemetryCluster/TelemetryBox/VBox/LabelD")
 @onready var label_vs: Label = get_node_or_null("RightTelemetryCluster/TelemetryBox/VBox/LabelVS")
-@onready var sensor_icon: Label = get_node_or_null("RightTelemetryCluster/SensorBox/HBox/SensorIcon")
-@onready var sensor_label: Label = get_node_or_null("RightTelemetryCluster/SensorBox/HBox/SensorLabel")
+@onready var sensor_icon: Label = get_node_or_null(
+	"RightTelemetryCluster/SensorBox/HBox/SensorIcon"
+)
+@onready var sensor_label: Label = get_node_or_null(
+	"RightTelemetryCluster/SensorBox/HBox/SensorLabel"
+)
 
 # Center Overlay
 @onready var label_state_banner: Label = get_node_or_null("CenterOverlay/StateBanner")
