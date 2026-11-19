@@ -11,7 +11,9 @@ extends Node3D
 @onready var mission_results: MissionResults = $FlightHUD/MissionResults
 @onready var pause_menu: PauseMenu = $FlightHUD/PauseMenu
 @onready var world_select_menu: WorldSelectMenu = get_node_or_null("FlightHUD/WorldSelectMenu")
-@onready var real_location_explorer: RealLocationExplorer = get_node_or_null("FlightHUD/RealLocationExplorer")
+@onready var real_location_explorer: RealLocationExplorer = get_node_or_null(
+	"FlightHUD/RealLocationExplorer"
+)
 @onready var training_academy: TrainingAcademy = get_node_or_null("TrainingAcademy")
 @onready var audio_director: AudioDirector = get_node_or_null("AudioDirector")
 @onready var vfx_director: VFXDirector = get_node_or_null("VFXDirector")
@@ -53,6 +55,7 @@ func _ready() -> void:
 		)
 		if quadcopter.stunt_engine:
 			quadcopter.stunt_engine.stunt_completed.connect(func(_type, score, _quality):
+				Input.vibrate_handheld(75)
 				if mission_manager and mission_manager.progression_service:
 					mission_manager.progression_service.add_xp(score / 5)
 					mission_manager.progression_service.add_coins(score / 10)
@@ -83,7 +86,8 @@ func _ready() -> void:
 	# Register collectible coins
 	if coins_container:
 		for child in coins_container.get_children():
-			if (child is CollectibleCoin or child.has_signal("coin_collected")) and not child.coin_collected.is_connected(_on_coin_collected):
+			var is_coin = child is CollectibleCoin or child.has_signal("coin_collected")
+			if is_coin and not child.coin_collected.is_connected(_on_coin_collected):
 				child.coin_collected.connect(_on_coin_collected)
 
 	# Connect Pause & Results Modals
@@ -103,8 +107,10 @@ func _ready() -> void:
 			flight_hud.world_select_requested.connect(world_select_menu.show_menu)
 		if not world_select_menu.world_selected.is_connected(_on_world_selected):
 			world_select_menu.world_selected.connect(_on_world_selected)
-		if real_location_explorer and not world_select_menu.real_location_explorer_requested.is_connected(_on_explorer_requested):
-			world_select_menu.real_location_explorer_requested.connect(_on_explorer_requested)
+		if real_location_explorer:
+			var rle_sig = world_select_menu.real_location_explorer_requested
+			if not rle_sig.is_connected(_on_explorer_requested):
+				rle_sig.connect(_on_explorer_requested)
 
 	# Initialize Training Academy
 	if not training_academy:
@@ -140,10 +146,14 @@ func _ready() -> void:
 	# Connect gate pass audio and particle effects
 	for gate in gates:
 		gate.gate_passed.connect(func(_idx: int):
+			Input.vibrate_handheld(45)
 			if audio_director: audio_director.play_gate_passed()
 			if vfx_director:
 				var g_pos = gate.global_position if gate.is_inside_tree() else gate.position
-				var g_basis = gate.global_transform.basis if gate.is_inside_tree() else gate.transform.basis
+				var g_basis = (
+					gate.global_transform.basis if gate.is_inside_tree()
+					else gate.transform.basis
+				)
 				vfx_director.spawn_gate_pass_vfx(g_pos, g_basis)
 		)
 
@@ -173,6 +183,7 @@ func _ready() -> void:
 		mission_manager.start_mission("training_gate_run")
 
 func _on_coin_collected(coin_inst: CollectibleCoin, value: int) -> void:
+	Input.vibrate_handheld(30)
 	if audio_director:
 		audio_director.play_coin_pickup()
 	if vfx_director and coin_inst:
@@ -182,17 +193,23 @@ func _on_coin_collected(coin_inst: CollectibleCoin, value: int) -> void:
 		mission_manager.record_coin_pickup(value)
 
 func _on_drone_crashed_feedback(impact_force: float) -> void:
+	Input.vibrate_handheld(250)
 	if audio_director:
 		audio_director.play_crash()
 	if vfx_director and quadcopter:
-		var d_pos = quadcopter.global_position if quadcopter.is_inside_tree() else quadcopter.position
+		var d_pos = (
+			quadcopter.global_position if quadcopter.is_inside_tree()
+			else quadcopter.position
+		)
 		vfx_director.spawn_crash_vfx(d_pos, impact_force)
 
 func _on_mission_started(mission_def: Dictionary) -> void:
 	if mission_overlay:
 		mission_overlay.set_mission(mission_def.get("title", "Mission"))
 
-func _on_mission_progress_updated(obj_text: String, cur_val: int, target_val: int, time_left: float) -> void:
+func _on_mission_progress_updated(
+	obj_text: String, cur_val: int, target_val: int, time_left: float
+) -> void:
 	if mission_overlay:
 		mission_overlay.update_progress(obj_text, cur_val, target_val, time_left)
 
@@ -209,13 +226,19 @@ func _on_mission_failed(reason: String) -> void:
 		flight_hud.label_state_banner.text = "MISSION FAILED: %s — PRESS R TO RETRY" % reason
 		flight_hud.label_state_banner.visible = true
 
-func _on_academy_step_updated(instruction: String, current_step: int, total_steps: int) -> void:
+func _on_academy_step_updated(
+	instruction: String, current_step: int, total_steps: int
+) -> void:
 	if mission_overlay:
-		mission_overlay.update_progress("Step %d/%d: %s" % [current_step, total_steps, instruction], current_step, total_steps, 0.0)
+		var step_str = "Step %d/%d: %s" % [current_step, total_steps, instruction]
+		mission_overlay.update_progress(step_str, current_step, total_steps, 0.0)
 
-func _on_academy_lesson_completed(_lesson_id: String, medal: String, score: int, _rewards: Dictionary) -> void:
+func _on_academy_lesson_completed(
+	_lesson_id: String, medal: String, score: int, _rewards: Dictionary
+) -> void:
 	if flight_hud and flight_hud.label_state_banner:
-		flight_hud.label_state_banner.text = "ACADEMY LESSON COMPLETE [%s MEDAL] +%d PTS!" % [medal, score]
+		var banner_str = "ACADEMY LESSON COMPLETE [%s MEDAL] +%d PTS!" % [medal, score]
+		flight_hud.label_state_banner.text = banner_str
 		flight_hud.label_state_banner.visible = true
 
 func _on_academy_lesson_failed(_lesson_id: String, reason: String) -> void:
