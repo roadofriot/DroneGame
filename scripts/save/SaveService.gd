@@ -17,7 +17,11 @@ static func get_default_save_data() -> Dictionary:
 			"current_xp": 0,
 			"coins_banked": 0,
 			"equipped_drone": "scout",
-			"unlocked_drones": ["scout"]
+			"unlocked_drones": ["scout"],
+			"unlocked_stages": ["stage_01_butwal"],
+			"discovered_landmarks": [],
+			"total_distance_km": 0.0,
+			"current_adventure_stage": "stage_01_butwal"
 		},
 		"mission_records": {},
 		"claimed_run_hashes": [],
@@ -127,3 +131,58 @@ static func _migrate_schema_if_needed(data: Dictionary) -> Dictionary:
 		data["schema_version"] = 1
 
 	return data
+
+# -----------------------------------------------------------------------------
+# Adventure Stage & Landmark Progression Helpers
+# -----------------------------------------------------------------------------
+static func is_stage_unlocked(stage_id: String) -> bool:
+	if stage_id == "stage_01_butwal":
+		return true
+	var data = load_game()
+	var profile = data.get("player_profile", {})
+	var stages = profile.get("unlocked_stages", ["stage_01_butwal"])
+	return stages.has(stage_id)
+
+static func unlock_stage(stage_id: String) -> bool:
+	var data = load_game()
+	if not data.has("player_profile"):
+		data["player_profile"] = get_default_save_data()["player_profile"]
+	var stages = data["player_profile"].get("unlocked_stages", ["stage_01_butwal"])
+	if not stages.has(stage_id):
+		stages.append(stage_id)
+		data["player_profile"]["unlocked_stages"] = stages
+		data["player_profile"]["current_adventure_stage"] = stage_id
+		return save_game(data)
+	return true
+
+static func is_landmark_discovered(landmark_id: String) -> bool:
+	var data = load_game()
+	var profile = data.get("player_profile", {})
+	var lms = profile.get("discovered_landmarks", [])
+	return lms.has(landmark_id)
+
+static func discover_landmark(landmark_id: String) -> bool:
+	var data = load_game()
+	if not data.has("player_profile"):
+		data["player_profile"] = get_default_save_data()["player_profile"]
+	var lms = data["player_profile"].get("discovered_landmarks", [])
+	if not lms.has(landmark_id):
+		lms.append(landmark_id)
+		data["player_profile"]["discovered_landmarks"] = lms
+		return save_game(data)
+	return false
+
+static func record_distance_km(km: float) -> void:
+	if km <= 0.0 or not is_finite(km):
+		return
+	var data = load_game()
+	if not data.has("player_profile"):
+		data["player_profile"] = get_default_save_data()["player_profile"]
+	var cur = data["player_profile"].get("total_distance_km", 0.0)
+	data["player_profile"]["total_distance_km"] = cur + km
+	save_game(data)
+
+static func get_total_distance_km() -> float:
+	var data = load_game()
+	var profile = data.get("player_profile", {})
+	return profile.get("total_distance_km", 0.0)

@@ -24,6 +24,10 @@ var total_flight_time_seconds: float = 0.0
 var total_distance_meters: float = 0.0
 var battery_remaining_percent: float = 100.0
 
+# Open-World Adventure State
+var active_adventure_stage: String = "stage_01_butwal"
+var active_target_destination: String = "stage_02_lumbini"
+
 # Settings Service reference
 var settings_service: SettingsService = null
 

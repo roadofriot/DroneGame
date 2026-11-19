@@ -1,0 +1,93 @@
+[gd_scene load_steps=22 format=3 uid="uid://nepaladvworld01"]
+
+[ext_resource type="Script" path="res://scripts/core/FlightWorld.gd" id="1_world"]
+[ext_resource type="Script" path="res://scripts/input/InputRouter.gd" id="2_input"]
+[ext_resource type="PackedScene" uid="uid://c3q4m8r8d1p01" path="res://scenes/drones/QuadcopterRig.tscn" id="3_drone"]
+[ext_resource type="Script" path="res://scripts/camera/FlightCameraDirector.gd" id="4_cam_director"]
+[ext_resource type="PackedScene" uid="uid://b0yqvdku6s201" path="res://scenes/ui/FlightHUD.tscn" id="5_hud"]
+[ext_resource type="Script" path="res://scripts/missions/MissionManager.gd" id="6_missions"]
+[ext_resource type="PackedScene" uid="uid://d2missonlay01" path="res://scenes/ui/MissionOverlay.tscn" id="7_overlay"]
+[ext_resource type="PackedScene" uid="uid://d3mresult01" path="res://scenes/ui/MissionResults.tscn" id="8_results"]
+[ext_resource type="PackedScene" uid="uid://b3pause01" path="res://scenes/ui/PauseMenu.tscn" id="9_pause"]
+[ext_resource type="PackedScene" uid="uid://d4wselect01" path="res://scenes/ui/WorldSelectMenu.tscn" id="10_wselect"]
+[ext_resource type="PackedScene" uid="uid://c8realloc01" path="res://scenes/maps/RealLocationExplorer.tscn" id="11_realloc"]
+[ext_resource type="Script" path="res://scripts/world/AdventureWorldStreamer.gd" id="12_streamer"]
+[ext_resource type="Script" path="res://scripts/world/AdventureNavigationManager.gd" id="13_nav"]
+
+[sub_resource type="ProceduralSkyMaterial" id="ProceduralSkyMaterial_nepal"]
+sky_top_color = Color(0.18, 0.42, 0.88, 1)
+sky_horizon_color = Color(0.75, 0.84, 0.96, 1)
+ground_bottom_color = Color(0.14, 0.16, 0.18, 1)
+ground_horizon_color = Color(0.75, 0.84, 0.96, 1)
+
+[sub_resource type="Sky" id="Sky_nepal"]
+sky_material = SubResource("ProceduralSkyMaterial_nepal")
+
+[sub_resource type="Environment" id="Environment_nepal"]
+background_mode = 2
+sky = SubResource("Sky_nepal")
+ambient_light_source = 2
+ambient_light_color = Color(0.85, 0.88, 0.94, 1)
+ambient_light_energy = 0.45
+tonemap_mode = 2
+ssao_enabled = false
+glow_enabled = true
+glow_intensity = 0.4
+fog_enabled = true
+fog_light_color = Color(0.76, 0.84, 0.94, 1)
+fog_density = 0.00035
+
+[node name="FlightWorld" type="Node3D"]
+script = ExtResource("1_world")
+
+[node name="WorldEnvironment" type="WorldEnvironment" parent="."]
+environment = SubResource("Environment_nepal")
+
+[node name="DirectionalLight3D" type="DirectionalLight3D" parent="."]
+transform = Transform3D(0.866025, -0.353553, 0.353553, 0, 0.707107, 0.707107, -0.5, -0.612372, 0.612372, 0, 80, 0)
+shadow_enabled = true
+
+[node name="InputRouter" type="Node" parent="."]
+script = ExtResource("2_input")
+
+[node name="MissionManager" type="Node" parent="."]
+script = ExtResource("6_missions")
+
+[node name="AdventureNavigationManager" type="Node" parent="." node_paths=PackedStringArray("target_drone")]
+script = ExtResource("13_nav")
+target_drone = NodePath("../Quadcopter")
+
+[node name="AdventureStreamer" type="Node3D" parent="." node_paths=PackedStringArray("tracked_target")]
+script = ExtResource("12_streamer")
+tracked_target = NodePath("../Quadcopter")
+
+[node name="Quadcopter" parent="." node_paths=PackedStringArray("input_router") instance=ExtResource("3_drone")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 12.1, 0)
+input_router = NodePath("../InputRouter")
+
+[node name="CameraDirector" type="Node3D" parent="." node_paths=PackedStringArray("target_drone", "chase_camera", "fpv_camera")]
+script = ExtResource("4_cam_director")
+target_drone = NodePath("../Quadcopter")
+chase_camera = NodePath("ChaseCamera")
+fpv_camera = NodePath("../Quadcopter/DroneRig/Fuselage/GimbalMount/GimbalPitch/FPVCamera")
+
+[node name="ChaseCamera" type="Camera3D" parent="CameraDirector"]
+transform = Transform3D(1, 0, 0, 0, 0.965926, 0.258819, 0, -0.258819, 0.965926, 0, 13.3, 3.2)
+current = true
+fov = 72.0
+
+[node name="FlightHUD" parent="." node_paths=PackedStringArray("input_router", "flight_physics", "camera_director") instance=ExtResource("5_hud")]
+input_router = NodePath("../InputRouter")
+flight_physics = NodePath("../Quadcopter")
+camera_director = NodePath("../CameraDirector")
+
+[node name="MissionOverlay" parent="FlightHUD" instance=ExtResource("7_overlay")]
+
+[node name="MissionResults" parent="FlightHUD" instance=ExtResource("8_results")]
+
+[node name="PauseMenu" parent="FlightHUD" instance=ExtResource("9_pause")]
+
+[node name="WorldSelectMenu" parent="FlightHUD" instance=ExtResource("10_wselect")]
+
+[node name="RealLocationExplorer" parent="FlightHUD" instance=ExtResource("11_realloc")]
+visible = false

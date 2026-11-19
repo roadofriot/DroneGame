@@ -23,6 +23,9 @@ static func get_world_by_id(world_id: String) -> Dictionary:
 	return {}
 
 static func is_world_unlocked(world_def: Dictionary, player_level: int) -> bool:
+	var wid = world_def.get("id", "")
+	if SaveService.is_stage_unlocked(wid):
+		return true
 	if world_def.get("unlocked_by_default", false):
 		return true
 	var req_lvl = world_def.get("required_level", 1)

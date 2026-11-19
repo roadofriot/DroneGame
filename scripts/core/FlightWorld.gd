@@ -3,6 +3,9 @@ extends Node3D
 
 ## FlightWorld: Orchestrates Flight Physics, Missions, Collectibles, and HUD Overlays.
 
+const NepalWorldRegions = preload("res://scripts/world/NepalWorldRegions.gd")
+const AdventureNavigationManager = preload("res://scripts/world/AdventureNavigationManager.gd")
+
 @onready var quadcopter: FlightPhysics = $Quadcopter
 @onready var input_router: InputRouter = $InputRouter
 @onready var mission_manager: MissionManager = $MissionManager
@@ -17,9 +20,12 @@ extends Node3D
 @onready var training_academy: TrainingAcademy = get_node_or_null("TrainingAcademy")
 @onready var audio_director: AudioDirector = get_node_or_null("AudioDirector")
 @onready var vfx_director: VFXDirector = get_node_or_null("VFXDirector")
+@onready var adventure_nav: AdventureNavigationManager = get_node_or_null(
+	"AdventureNavigationManager"
+)
 
-@onready var gates_container: Node3D = $EnvironmentGeometry/FlightGates
-@onready var coins_container: Node3D = $EnvironmentGeometry/CollectibleCoins
+@onready var gates_container: Node3D = get_node_or_null("EnvironmentGeometry/FlightGates")
+@onready var coins_container: Node3D = get_node_or_null("EnvironmentGeometry/CollectibleCoins")
 
 func _ready() -> void:
 	# Connect InputRouter Action Signals to Drone and Systems
@@ -82,6 +88,21 @@ func _ready() -> void:
 			mission_manager.mission_completed.connect(_on_mission_completed)
 		if not mission_manager.mission_failed.is_connected(_on_mission_failed):
 			mission_manager.mission_failed.connect(_on_mission_failed)
+
+	# Initialize Adventure Navigation Manager if present
+	if adventure_nav:
+		adventure_nav.target_drone = quadcopter
+		if flight_hud:
+			var lm_sig = adventure_nav.landmark_discovered
+			if not lm_sig.is_connected(flight_hud.show_landmark_discovered_banner):
+				lm_sig.connect(flight_hud.show_landmark_discovered_banner)
+			var dest_sig = adventure_nav.destination_reached
+			if not dest_sig.is_connected(_on_adventure_destination_reached):
+				dest_sig.connect(_on_adventure_destination_reached)
+		if audio_director:
+			var cp_sig = adventure_nav.checkpoint_passed
+			if not cp_sig.is_connected(_on_adventure_checkpoint_passed):
+				cp_sig.connect(_on_adventure_checkpoint_passed)
 
 	# Register collectible coins
 	if coins_container:
@@ -276,9 +297,35 @@ func _on_world_selected(world_id: String) -> void:
 	var def = WorldData.get_world_by_id(world_id)
 	if not def.is_empty() and def.has("scene_path"):
 		var target_scene = def["scene_path"]
+		if world_id.begins_with("stage_") or world_id == "nepal_adventure":
+			var stage_key = "stage_01_butwal" if world_id == "nepal_adventure" else world_id
+			if Engine.has_singleton("GameState"):
+				var gs = Engine.get_singleton("GameState")
+				gs.active_adventure_stage = stage_key
+			if scene_file_path.ends_with("NepalAdventureWorld.tscn") and adventure_nav:
+				var next_st = NepalWorldRegions.get_next_stage(stage_key)
+				var target_id = next_st.get("id", "stage_02_lumbini")
+				adventure_nav.active_stage_id = stage_key
+				adventure_nav.target_stage_id = target_id
+				var st_def = NepalWorldRegions.get_stage_by_id(stage_key)
+				var sp: Vector3 = st_def.get("landing_pad_position", Vector3(0, 12.1, 0))
+				if quadcopter:
+					quadcopter.position = sp
+					quadcopter.reset_to_pad()
+				return
 		if ResourceLoader.exists(target_scene):
 			get_tree().change_scene_to_file(target_scene)
 
 func _on_explorer_requested() -> void:
 	if real_location_explorer:
 		real_location_explorer.visible = true
+
+func _on_adventure_destination_reached(stage_def: Dictionary, results: Dictionary) -> void:
+	if flight_hud:
+		flight_hud.show_destination_reached_banner(stage_def, results)
+	if audio_director:
+		audio_director.play_mission_completed()
+
+func _on_adventure_checkpoint_passed(_idx: int, _total: int, _reward: int) -> void:
+	if audio_director:
+		audio_director.play_gate_passed()

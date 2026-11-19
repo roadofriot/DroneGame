@@ -434,6 +434,25 @@ func _show_banner(msg: String, duration: float = 3.0) -> void:
 		label_state_banner.visible = true
 		banner_hide_timer = duration
 
+func show_landmark_discovered_banner(lm: Dictionary) -> void:
+	var name_str = lm.get("name", "Landmark")
+	var loc_str = lm.get("location", "Nepal")
+	var xp = lm.get("xp_reward", 150)
+	var coins = lm.get("coin_reward", 200)
+	var banner_text = "✨ LANDMARK DISCOVERED!\n%s (%s)\n+%d XP | +%d COINS" % [
+		name_str.to_upper(), loc_str, xp, coins
+	]
+	_show_banner(banner_text, 4.5)
+
+func show_destination_reached_banner(st: Dictionary, results: Dictionary) -> void:
+	var st_name = st.get("name", "Destination")
+	var next_name = results.get("unlocked_next", "Next Region")
+	var km = results.get("travel_distance_km", 0.0)
+	var banner_text = "🏁 STAGE COMPLETE: %s!\nNEXT UNLOCKED: %s (%.1f KM)" % [
+		st_name.to_upper(), next_name.to_upper(), km
+	]
+	_show_banner(banner_text, 6.0)
+
 func _on_preflight_failed(reason: String) -> void:
 	_show_banner("PREFLIGHT FAILED: %s" % reason.to_upper(), 4.0)
 

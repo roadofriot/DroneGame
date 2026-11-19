@@ -30,6 +30,7 @@ TEST_SUITES=(
   "tests/unit/test_location_explorer.gd:Phase 5 (Real Location Explorer)"
   "tests/unit/test_audio_vfx_settings.gd:Phase 6 (Audio Synthesizer, VFX & Presets)"
   "tests/unit/test_comprehensive_flight_audit.gd:Phase 7 (Master 20-Point Flight Audit TEST 001 - 020)"
+  "tests/unit/test_nepal_adventure_world.gd:Phase 10 (Nepal Open-World Adventure & 8 Stages)"
 )
 
 TOTAL_SUITES=${#TEST_SUITES[@]}
