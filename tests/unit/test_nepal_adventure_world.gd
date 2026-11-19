@@ -52,10 +52,10 @@ func run_tests() -> void:
 		quit(1)
 
 func test_na01_eight_stages_contract() -> bool:
-	print("[NA-01] Testing 8 Nepal Adventure Destinations Contract...")
+	print("[NA-01] Testing 10 Nepal Adventure Destinations Contract...")
 	var stages = NepalRegions.get_all_stages()
-	if stages.size() != 8:
-		printerr("FAIL: Expected 8 stages, got ", stages.size())
+	if stages.size() < 10:
+		printerr("FAIL: Expected at least 10 stages, got ", stages.size())
 		return false
 
 	var expected_ids = [
@@ -66,10 +66,12 @@ func test_na01_eight_stages_contract() -> bool:
 		"stage_05_chitwan",
 		"stage_06_kathmandu",
 		"stage_07_mountain_adventure",
-		"stage_08_everest_expedition"
+		"stage_08_everest_expedition",
+		"stage_09_annapurna_sanctuary",
+		"stage_10_mustang_kingdom"
 	]
 
-	for i in range(8):
+	for i in range(expected_ids.size()):
 		var st = stages[i]
 		if st.get("id") != expected_ids[i]:
 			printerr("FAIL: Stage %d expected %s, got %s" % [i + 1, expected_ids[i], st.get("id")])
@@ -84,7 +86,7 @@ func test_na01_eight_stages_contract() -> bool:
 			printerr("FAIL: Expected at least 2 landmarks in ", st.get("id"))
 			return false
 
-	print("  - All 8 Nepal adventure stages verified with valid coordinates & landmarks (PASS)")
+	print("  - All 10 Nepal adventure stages verified with valid coordinates & landmarks (PASS)")
 	return true
 
 func test_na02_adventure_scene_instantiation() -> bool:

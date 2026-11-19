@@ -13,6 +13,7 @@
 [ext_resource type="PackedScene" uid="uid://c8realloc01" path="res://scenes/maps/RealLocationExplorer.tscn" id="11_realloc"]
 [ext_resource type="Script" path="res://scripts/world/AdventureWorldStreamer.gd" id="12_streamer"]
 [ext_resource type="Script" path="res://scripts/world/AdventureNavigationManager.gd" id="13_nav"]
+[ext_resource type="Script" path="res://scripts/audio/AudioDirector.gd" id="14_audio"]
 
 [sub_resource type="ProceduralSkyMaterial" id="ProceduralSkyMaterial_nepal"]
 sky_top_color = Color(0.18, 0.42, 0.88, 1)
@@ -76,10 +77,14 @@ transform = Transform3D(1, 0, 0, 0, 0.965926, 0.258819, 0, -0.258819, 0.965926, 
 current = true
 fov = 72.0
 
-[node name="FlightHUD" parent="." node_paths=PackedStringArray("input_router", "flight_physics", "camera_director") instance=ExtResource("5_hud")]
+[node name="AudioDirector" type="Node" parent="."]
+script = ExtResource("14_audio")
+
+[node name="FlightHUD" parent="." node_paths=PackedStringArray("input_router", "flight_physics", "camera_director", "audio_director") instance=ExtResource("5_hud")]
 input_router = NodePath("../InputRouter")
 flight_physics = NodePath("../Quadcopter")
 camera_director = NodePath("../CameraDirector")
+audio_director = NodePath("../AudioDirector")
 
 [node name="MissionOverlay" parent="FlightHUD" instance=ExtResource("7_overlay")]
 
