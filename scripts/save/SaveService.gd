@@ -86,7 +86,7 @@ static func load_game() -> Dictionary:
 	if loaded_data.is_empty():
 		# Try loading from backup
 		if FileAccess.file_exists(BACKUP_SAVE_PATH):
-			print("SaveService: Primary save missing or corrupt. Attempting recovery from backup...")
+			print("SaveService: Primary save corrupt/missing. Attempting backup recovery...")
 			loaded_data = _try_read_save(BACKUP_SAVE_PATH)
 
 	if loaded_data.is_empty():

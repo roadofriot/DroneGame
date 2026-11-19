@@ -44,10 +44,10 @@ func populate_cards() -> void:
 	var worlds = WorldData.get_all_worlds()
 
 	for w in worlds:
-		var card = _create_world_card(w, player_level)
+		var card = create_world_card(w, player_level)
 		grid_container.add_child(card)
 
-func _create_world_card(world_def: Dictionary, player_level: int) -> Control:
+func create_world_card(world_def: Dictionary, player_level: int) -> Control:
 	var panel = PanelContainer.new()
 	panel.custom_minimum_size = Vector2(260, 340)
 
@@ -131,3 +131,6 @@ func _create_world_card(world_def: Dictionary, player_level: int) -> Control:
 
 	vbox.add_child(action_btn)
 	return panel
+
+func _create_world_card(world_def: Dictionary, player_level: int) -> Control:
+	return create_world_card(world_def, player_level)

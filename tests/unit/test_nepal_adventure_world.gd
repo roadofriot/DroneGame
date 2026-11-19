@@ -96,8 +96,6 @@ func test_na02_adventure_scene_instantiation() -> bool:
 
 	var inst = scene.instantiate() as Node3D
 	root.add_child(inst)
-	if not inst.is_node_ready():
-		inst._ready()
 
 	var drone = inst.get_node_or_null("Quadcopter")
 	var nav = inst.get_node_or_null("AdventureNavigationManager")
@@ -158,17 +156,17 @@ func test_na04_distance_telemetry_tracking() -> bool:
 	nav.target_drone = dummy_drone
 
 	# Set stage from Butwal (0, 12, 0) to Lumbini (500, 6, 3000)
-	nav._setup_active_journey("stage_01_butwal", "stage_02_lumbini")
+	nav.setup_active_journey("stage_01_butwal", "stage_02_lumbini")
 
 	dummy_drone.position = Vector3(0.0, 12.0, 0.0)
 	nav.previous_drone_pos = dummy_drone.position
 
 	# Simulate moving 500m South towards Lumbini
 	dummy_drone.position = Vector3(0.0, 12.0, 500.0)
-	nav._physics_process(1.0)
+	nav.update_navigation_step(1.0)
 
 	if nav.total_distance_travelled_meters < 490.0:
-		printerr("FAIL: Expected distance travelled ~500m, got: ", nav.total_distance_travelled_meters)
+		printerr("FAIL: Expected distance ~500m, got: ", nav.total_distance_travelled_meters)
 		dummy_drone.queue_free()
 		nav.queue_free()
 		return false
@@ -189,7 +187,7 @@ func test_na05_checkpoint_routing_sequence() -> bool:
 	var nav = AdventureNavManager.new()
 	root.add_child(nav)
 
-	nav._setup_active_journey("stage_01_butwal", "stage_02_lumbini")
+	nav.setup_active_journey("stage_01_butwal", "stage_02_lumbini")
 
 	if nav.checkpoint_nodes.size() != 3:
 		printerr("FAIL: Expected 3 intermediate checkpoints, got: ", nav.checkpoint_nodes.size())
@@ -209,7 +207,7 @@ func test_na05_checkpoint_routing_sequence() -> bool:
 		return false
 
 	# Pass gate 0
-	nav._on_checkpoint_gate_passed(0)
+	nav.pass_checkpoint_gate(0)
 	if nav.current_checkpoint_index != 1:
 		printerr("FAIL: Expected checkpoint index 1 after passing gate 0")
 		nav.queue_free()
@@ -240,7 +238,7 @@ func test_na06_landmark_discovery_and_rewards() -> bool:
 		return false
 
 	# Check proximity detection
-	nav._check_landmark_discoveries(bridge_pos)
+	nav.check_landmark_discoveries(bridge_pos)
 
 	nav.queue_free()
 	print("  - Landmark discovery verified: Tinau Bridge proximity logged & saved (PASS)")
@@ -256,14 +254,14 @@ func test_na07_touchdown_and_stage_unlocking() -> bool:
 	nav.target_drone = dummy_drone
 
 	# Set journey from Butwal to Lumbini
-	nav._setup_active_journey("stage_01_butwal", "stage_02_lumbini")
+	nav.setup_active_journey("stage_01_butwal", "stage_02_lumbini")
 
 	var lumbini = NepalRegions.get_stage_by_id("stage_02_lumbini")
 	var lumbini_pad: Vector3 = lumbini.get("target_coordinates")
 
 	# Position drone on Lumbini landing pad
 	dummy_drone.position = lumbini_pad
-	nav._check_destination_arrival(lumbini_pad, lumbini, 5.0, 0.2)
+	nav.check_destination_arrival(lumbini_pad, lumbini, 5.0, 0.2)
 
 	# Stage 03 (Tansen) should now be unlocked in save data!
 	var tansen_unlocked = SaveService.is_stage_unlocked("stage_03_tansen")
@@ -329,7 +327,7 @@ func test_na08_hud_telemetry_and_stage_cards() -> bool:
 
 	var menu = menu_scene.instantiate() as WorldSelectMenu
 	root.add_child(menu)
-	var stage_card = menu._create_world_card({
+	var stage_card = menu.create_world_card({
 		"id": "stage_01_butwal",
 		"name": "Stage 01: Butwal City",
 		"region": "Rupandehi Hub",

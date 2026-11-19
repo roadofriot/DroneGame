@@ -203,7 +203,10 @@ func _ready() -> void:
 	if btn_worlds:
 		btn_worlds.pressed.connect(func(): world_select_requested.emit())
 	if btn_close_settings:
-		btn_close_settings.pressed.connect(func(): if settings_modal: settings_modal.visible = false)
+		btn_close_settings.pressed.connect(func():
+			if settings_modal:
+				settings_modal.visible = false
+		)
 
 	# Connect Flight Physics Signals
 	if flight_physics:

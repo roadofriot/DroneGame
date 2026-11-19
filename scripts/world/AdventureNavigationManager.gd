@@ -46,9 +46,9 @@ func _ready() -> void:
 	coin_container.name = "AdventureCoins"
 	add_child(coin_container)
 
-	_setup_active_journey(active_stage_id, target_stage_id)
+	setup_active_journey(active_stage_id, target_stage_id)
 
-func _setup_active_journey(from_id: String, to_id: String) -> void:
+func setup_active_journey(from_id: String, to_id: String) -> void:
 	active_stage_id = from_id
 	target_stage_id = to_id
 	has_reached_destination = false
@@ -78,6 +78,9 @@ func _setup_active_journey(from_id: String, to_id: String) -> void:
 
 	_spawn_checkpoint_gates()
 	_spawn_journey_coin_trails(from_stage, to_stage)
+
+func _setup_active_journey(from_id: String, to_id: String) -> void:
+	setup_active_journey(from_id, to_id)
 
 func _spawn_checkpoint_gates() -> void:
 	for i in range(active_checkpoints.size()):
@@ -138,6 +141,9 @@ func _spawn_single_coin(pos: Vector3, val: int) -> void:
 	coin_container.add_child(coin)
 
 func _physics_process(delta: float) -> void:
+	update_navigation_step(delta)
+
+func update_navigation_step(delta: float) -> void:
 	if not target_drone or not is_instance_valid(target_drone):
 		return
 
@@ -183,12 +189,12 @@ func _physics_process(delta: float) -> void:
 	navigation_telemetry_updated.emit(telemetry)
 
 	# 3. Check landmark proximity discovery
-	_check_landmark_discoveries(cur_pos)
+	check_landmark_discoveries(cur_pos)
 
 	# 4. Check destination arrival and landing
-	_check_destination_arrival(cur_pos, to_stage, dist_remaining, spd_ms)
+	check_destination_arrival(cur_pos, to_stage, dist_remaining, spd_ms)
 
-func _check_landmark_discoveries(cur_pos: Vector3) -> void:
+func check_landmark_discoveries(cur_pos: Vector3) -> void:
 	var stages = NepalRegions.get_all_stages()
 	for st in stages:
 		for lm in st.get("landmarks", []):
@@ -206,8 +212,11 @@ func _check_landmark_discoveries(cur_pos: Vector3) -> void:
 					Input.vibrate_handheld(60)
 					landmark_discovered.emit(lm)
 
-func _check_destination_arrival(
-	cur_pos: Vector3, to_stage: Dictionary, dist_to_dest: float, spd_ms: float
+func _check_landmark_discoveries(cur_pos: Vector3) -> void:
+	check_landmark_discoveries(cur_pos)
+
+func check_destination_arrival(
+	_cur_pos: Vector3, to_stage: Dictionary, dist_to_dest: float, spd_ms: float
 ) -> void:
 	var arrival_rad = to_stage.get("arrival_radius", 50.0)
 
@@ -248,7 +257,12 @@ func _check_destination_arrival(
 
 			destination_reached.emit(to_stage, results)
 
-func _on_checkpoint_gate_passed(passed_idx: int) -> void:
+func _check_destination_arrival(
+	_cur_pos: Vector3, to_stage: Dictionary, dist_to_dest: float, spd_ms: float
+) -> void:
+	check_destination_arrival(_cur_pos, to_stage, dist_to_dest, spd_ms)
+
+func pass_checkpoint_gate(passed_idx: int) -> void:
 	if passed_idx == current_checkpoint_index:
 		current_checkpoint_index += 1
 		Input.vibrate_handheld(45)
@@ -261,3 +275,6 @@ func _on_checkpoint_gate_passed(passed_idx: int) -> void:
 			var next_gate = checkpoint_nodes[current_checkpoint_index] as MissionGate
 			if is_instance_valid(next_gate):
 				next_gate.set_state(MissionGate.GateState.ACTIVE)
+
+func _on_checkpoint_gate_passed(passed_idx: int) -> void:
+	pass_checkpoint_gate(passed_idx)
