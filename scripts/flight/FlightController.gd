@@ -25,13 +25,17 @@ var max_climb: float = 6.0
 var max_descent: float = 4.5
 var kp_att: float = 8.0 # Attitude error -> target angular rate
 var kp_rate: float = 35.0 # Rate error -> angular acceleration -> torque
+var kd_rate: float = 0.35 # Rate D-damping factor for oscillation suppression
 var kp_climb: float = 4.0 # Vertical speed error -> collective acceleration
+var ki_climb: float = 1.5 # Vertical speed error integral gain
 var altitude_hold: bool = true
 var is_acro: bool = false
 
 # Internal State
 var motor: PackedFloat32Array = PackedFloat32Array([0.0, 0.0, 0.0, 0.0]) # [0:FL, 1:FR, 2:RL, 3:RR]
 var _heading: float = 0.0
+var _climb_integral: float = 0.0
+var _prev_rate_error: Vector3 = Vector3.ZERO
 
 func _init() -> void:
 	reset()
@@ -39,6 +43,8 @@ func _init() -> void:
 func reset() -> void:
 	motor = PackedFloat32Array([0.0, 0.0, 0.0, 0.0])
 	_heading = 0.0
+	_climb_integral = 0.0
+	_prev_rate_error = Vector3.ZERO
 
 func configure(profile_data: Dictionary, physical_data: Dictionary = {}) -> void:
 	if not physical_data.is_empty():
@@ -110,8 +116,14 @@ func step(body: Basis, w_world: Vector3, v_world: Vector3,
 		else:
 			vz_cmd = cmd.throttle * max_descent
 
-		var az: float = G + kp_climb * (vz_cmd - v_world.y)
-		thrust = mass * az / maxf(up.y, 0.5) # Tilt compensation
+		var vz_err: float = vz_cmd - v_world.y
+		if absf(cmd.throttle) > 0.06:
+			_climb_integral = move_toward(_climb_integral, 0.0, 4.0 * safe_dt)
+		elif altitude_hold:
+			_climb_integral = clampf(_climb_integral + vz_err * safe_dt * ki_climb, -2.5, 2.5)
+
+		var az: float = G + kp_climb * vz_err + _climb_integral
+		thrust = mass * maxf(0.1, az) / maxf(up.y, 0.5) # Tilt compensation
 
 	# 4) Flip / Stunt overrides
 	if not override.is_empty():
@@ -120,8 +132,16 @@ func step(body: Basis, w_world: Vector3, v_world: Vector3,
 		if override.has("thrust_scale"):
 			thrust = mass * G * override.thrust_scale
 
-	# 5) Rate P-loop -> angular acceleration -> torque
-	var torque: Vector3 = (w_target - w_local) * kp_rate * inertia
+	# 5) Rate PID-loop -> angular acceleration -> torque with D-term damping
+	var rate_error: Vector3 = w_target - w_local
+	var d_rate: Vector3 = (rate_error - _prev_rate_error) / safe_dt
+	_prev_rate_error = rate_error
+	d_rate.x = clampf(d_rate.x, -50.0, 50.0)
+	d_rate.y = clampf(d_rate.y, -50.0, 50.0)
+	d_rate.z = clampf(d_rate.z, -50.0, 50.0)
+
+	var damping_scale: float = kd_rate * kp_rate * 0.04
+	var torque: Vector3 = (rate_error * kp_rate + d_rate * damping_scale) * inertia
 
 	# 6) Motor mixer & first-order spool lag
 	return _mix(thrust, torque, safe_dt)

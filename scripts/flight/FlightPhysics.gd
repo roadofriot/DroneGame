@@ -52,6 +52,7 @@ enum DroneState {
 @export var angular_drag: float = 4.0
 @export var ground_effect_dist: float = 1.5
 @export var ground_effect_mult: float = 0.25
+@export var active_wind: Vector3 = Vector3.ZERO # Environment wind vector (m/s)
 
 # Flight State & State Machine
 var state_machine: FlightStateMachine = null
@@ -314,6 +315,9 @@ func set_flight_profile(profile_name: String) -> void:
 			var lead_r = active_profile.get("flip_lead_rad", 0.90)
 			flip_controller.configure(flip_rate, boost_t, lead_r)
 		flight_mode_changed.emit(active_profile.get("name", profile_name.capitalize()))
+
+func set_world_wind(wind: Vector3) -> void:
+	active_wind = wind
 
 # --- Physics Process Loop (Fixed 60Hz Timestep) ---
 
@@ -621,10 +625,10 @@ func _process_flying(delta: float) -> void:
 	var frame: ControlFrame = null
 	if input_router and input_router.current_frame:
 		frame = input_router.current_frame.duplicate_frame()
-		if in_throttle != 0.0: frame.throttle = in_throttle
-		if in_yaw != 0.0: frame.yaw = in_yaw
-		if in_pitch != 0.0: frame.pitch = in_pitch
-		if in_roll != 0.0: frame.roll = in_roll
+		frame.throttle = in_throttle
+		frame.yaw = in_yaw
+		frame.pitch = in_pitch
+		frame.roll = in_roll
 	else:
 		frame = ControlFrame.new(in_throttle, in_yaw, in_pitch, in_roll)
 
@@ -948,12 +952,14 @@ func _apply_motor_forces(delta: float) -> void:
 	if ang_vel.length() > 8.0:
 		angular_velocity = ang_vel.normalized() * 8.0
 
-	var lin_speed = linear_velocity.length()
-	if lin_speed > 0.001 and linear_velocity.is_finite():
+	# Relative airspeed aerodynamic drag & continuous ambient wind force
+	var relative_velocity = linear_velocity - active_wind
+	var lin_speed = relative_velocity.length()
+	if lin_speed > 0.001 and relative_velocity.is_finite():
 		var max_drag_force = (drone_mass * lin_speed) / maxf(delta, 0.001) * 0.45
 		var natural_drag = lin_speed * linear_drag * lin_speed
 		var final_drag = minf(natural_drag, max_drag_force)
-		apply_central_force(-linear_velocity.normalized() * final_drag)
+		apply_central_force(-relative_velocity.normalized() * final_drag)
 
 	var ang_speed = angular_velocity.length()
 	if ang_speed > 0.001 and angular_velocity.is_finite():

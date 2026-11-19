@@ -145,6 +145,17 @@ func _ready() -> void:
 	if quadcopter and not quadcopter.drone_crashed.is_connected(_on_drone_crashed_feedback):
 		quadcopter.drone_crashed.connect(_on_drone_crashed_feedback)
 
+	# Initialize environment wind from active world data
+	if quadcopter:
+		var cur_scene = scene_file_path
+		var worlds = WorldData.get_all_worlds()
+		for w in worlds:
+			if w.get("scene_path", "") == cur_scene or cur_scene.ends_with("FlightWorld.tscn"):
+				var wv = w.get("wind_vector", [0.0, 0.0, 0.0])
+				if wv is Array and wv.size() == 3:
+					quadcopter.set_world_wind(Vector3(wv[0], wv[1], wv[2]) * 6.0)
+				break
+
 	# Apply user quality settings preset
 	var settings_svc = SettingsService.new()
 	var world_env: WorldEnvironment = get_node_or_null("WorldEnvironment")
