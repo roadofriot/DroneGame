@@ -282,7 +282,7 @@ func _instantiate_chunk_mesh(coord: Vector2i, lod: int, arrays: Array) -> void:
 	# Static collision on LOD 0
 	if lod == 0:
 		var sb = StaticBody3D.new()
-		sb.collision_layer = 2
+		sb.collision_layer = 1 | 2
 		sb.collision_mask = 1
 		var cs = CollisionShape3D.new()
 		cs.shape = arr_mesh.create_trimesh_shape()
@@ -385,8 +385,13 @@ func _spawn_all_stage_landmarks() -> void:
 
 func _spawn_stage_landing_pad(stage_def: Dictionary) -> void:
 	var pad_pos: Vector3 = stage_def.get("landing_pad_position", Vector3.ZERO)
-	var pad_root = Node3D.new()
+	var terrain_h = get_height_at(pad_pos.x, pad_pos.z)
+	pad_pos.y = terrain_h + 0.2
+
+	var pad_root = StaticBody3D.new()
 	pad_root.name = "Pad_" + stage_def.get("id", "stage")
+	pad_root.collision_layer = 1 | 2
+	pad_root.collision_mask = 0
 
 	# Base circular pad
 	var pad_mesh = CylinderMesh.new()
@@ -400,6 +405,14 @@ func _spawn_stage_landing_pad(stage_def: Dictionary) -> void:
 	var pad_inst = MeshInstance3D.new()
 	pad_inst.mesh = pad_mesh
 	pad_root.add_child(pad_inst)
+
+	# Static collision collider for drone resting and raycast sensing
+	var pad_col = CollisionShape3D.new()
+	var pad_cyl = CylinderShape3D.new()
+	pad_cyl.radius = 6.0
+	pad_cyl.height = 0.4
+	pad_col.shape = pad_cyl
+	pad_root.add_child(pad_col)
 
 	# Luminous landing ring
 	var ring_mesh = TorusMesh.new()

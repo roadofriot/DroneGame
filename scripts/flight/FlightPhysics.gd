@@ -538,7 +538,8 @@ func _process_flying(delta: float) -> void:
 	# Phase 5: FlipController aerobatic maneuvers take precedence during active flips
 	if flip_controller and flip_controller.is_active():
 		var is_ready = is_inside_tree() and is_node_ready()
-		var cur_b = global_transform.basis.orthonormalized() if is_ready else transform.basis.orthonormalized()
+		var cur_basis_raw = global_transform.basis if is_ready else transform.basis
+		var cur_b = cur_basis_raw.orthonormalized()
 		var local_w = cur_b.transposed() * angular_velocity
 		var up_y = cur_b.y.y
 		var override = flip_controller.step(local_w, up_y, delta)
@@ -620,7 +621,8 @@ func _process_flying(delta: float) -> void:
 		flight_boundary_reached.emit("GEOFENCE_RADIUS")
 
 	var is_tree_ready = is_inside_tree() and is_node_ready()
-	var cur_basis = global_transform.basis.orthonormalized() if is_tree_ready else transform.basis.orthonormalized()
+	var raw_b = global_transform.basis if is_tree_ready else transform.basis
+	var cur_basis = raw_b.orthonormalized()
 
 	# Fetch unified ControlFrame
 	var frame: ControlFrame = null
@@ -847,6 +849,18 @@ func reset_to_pad() -> void:
 	drone_state_changed.emit("DISARMED")
 	print("[FLIGHT] RESET_COMPLETE — Placed on Pad")
 
+func set_spawn_position(new_pos: Vector3) -> void:
+	spawn_transform = Transform3D(Basis(), new_pos)
+	if is_inside_tree() and is_node_ready():
+		global_transform = spawn_transform
+	else:
+		transform = spawn_transform
+	linear_velocity = Vector3.ZERO
+	angular_velocity = Vector3.ZERO
+	altitude_agl = 0.0
+	current_state = DroneState.DISARMED
+	drone_state_changed.emit("DISARMED")
+
 func get_home_distance() -> float:
 	var home_pos = spawn_transform.origin
 	var cur_pos = global_position if (is_inside_tree() and is_node_ready()) else position
@@ -865,7 +879,7 @@ func _perform_preflight_check() -> String:
 		return "Battery critically low"
 	if current_state == DroneState.CRASHED:
 		return "Drone crashed — Press Reset first"
-	if altitude_agl > 0.8:
+	if altitude_agl > 1.2:
 		return "Drone not grounded on launch surface"
 	return ""
 
@@ -882,7 +896,8 @@ func _calculate_auto_level_rpms(
 	var roll_err = deg_to_rad(target_roll_deg - roll_deg)
 
 	var is_ready = is_inside_tree() and is_node_ready()
-	var cur_basis = global_transform.basis.orthonormalized() if is_ready else transform.basis.orthonormalized()
+	var raw_b = global_transform.basis if is_ready else transform.basis
+	var cur_basis = raw_b.orthonormalized()
 	var local_ang_vel = cur_basis.transposed() * angular_velocity
 
 	var pitch_torque = (pitch_err * pitch_pid_p) - (local_ang_vel.x * pitch_pid_d)
@@ -906,7 +921,8 @@ func _calculate_acro_rpms(
 	base_thrust: float, in_pitch: float, in_roll: float, in_yaw: float, _delta: float
 ) -> void:
 	var is_ready = is_inside_tree() and is_node_ready()
-	var cur_basis = global_transform.basis.orthonormalized() if is_ready else transform.basis.orthonormalized()
+	var raw_b = global_transform.basis if is_ready else transform.basis
+	var cur_basis = raw_b.orthonormalized()
 	var local_ang_vel = cur_basis.transposed() * angular_velocity
 	var p_rate = (in_pitch * 5.0) - local_ang_vel.x
 	var r_rate = (in_roll * 5.0) - local_ang_vel.z
@@ -932,7 +948,8 @@ func _apply_motor_forces(delta: float) -> void:
 		total_thrust *= (1.0 + (ge_factor * ground_effect_mult))
 
 	var is_ready = is_inside_tree() and is_node_ready()
-	var cur_basis = global_transform.basis.orthonormalized() if is_ready else transform.basis.orthonormalized()
+	var raw_b = global_transform.basis if is_ready else transform.basis
+	var cur_basis = raw_b.orthonormalized()
 	var thrust_vector = cur_basis.y * total_thrust
 	if thrust_vector.is_finite():
 		apply_central_force(thrust_vector)

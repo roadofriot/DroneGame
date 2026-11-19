@@ -23,6 +23,9 @@ const AdventureNavigationManager = preload("res://scripts/world/AdventureNavigat
 @onready var adventure_nav: AdventureNavigationManager = get_node_or_null(
 	"AdventureNavigationManager"
 )
+@onready var adventure_streamer: AdventureWorldStreamer = get_node_or_null(
+	"AdventureStreamer"
+)
 
 @onready var gates_container: Node3D = get_node_or_null("EnvironmentGeometry/FlightGates")
 @onready var coins_container: Node3D = get_node_or_null("EnvironmentGeometry/CollectibleCoins")
@@ -103,10 +106,12 @@ func _ready() -> void:
 			var target_id = next_st.get("id", "stage_02_lumbini")
 			adventure_nav.setup_active_journey(st_key, target_id)
 			var st_def = NepalWorldRegions.get_stage_by_id(st_key)
-			var pad_p: Vector3 = st_def.get("landing_pad_position", Vector3(0, 12.1, 0))
+			var pad_p: Vector3 = st_def.get("landing_pad_position", Vector3(0, 10.2, 0))
+			if adventure_streamer:
+				var th = adventure_streamer.get_height_at(pad_p.x, pad_p.z)
+				pad_p.y = th + 0.2
 			if quadcopter:
-				quadcopter.position = pad_p
-				quadcopter.reset_to_pad()
+				quadcopter.set_spawn_position(pad_p + Vector3(0.0, 0.25, 0.0))
 		if flight_hud:
 			var lm_sig = adventure_nav.landmark_discovered
 			if not lm_sig.is_connected(flight_hud.show_landmark_discovered_banner):
@@ -326,10 +331,12 @@ func _on_world_selected(world_id: String) -> void:
 				var target_id = next_st.get("id", "stage_02_lumbini")
 				adventure_nav.setup_active_journey(stage_key, target_id)
 				var st_def = NepalWorldRegions.get_stage_by_id(stage_key)
-				var sp: Vector3 = st_def.get("landing_pad_position", Vector3(0, 12.1, 0))
+				var sp: Vector3 = st_def.get("landing_pad_position", Vector3(0, 10.2, 0))
+				if adventure_streamer:
+					var th = adventure_streamer.get_height_at(sp.x, sp.z)
+					sp.y = th + 0.2
 				if quadcopter:
-					quadcopter.position = sp
-					quadcopter.reset_to_pad()
+					quadcopter.set_spawn_position(sp + Vector3(0.0, 0.25, 0.0))
 				return
 		if ResourceLoader.exists(target_scene):
 			get_tree().change_scene_to_file(target_scene)
