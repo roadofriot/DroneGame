@@ -51,6 +51,12 @@ func _ready() -> void:
 			if quadcopter.stunt_engine:
 				quadcopter.stunt_engine.execute_stunt(stunt_type)
 		)
+		if quadcopter.stunt_engine:
+			quadcopter.stunt_engine.stunt_completed.connect(func(_type, score, _quality):
+				if mission_manager and mission_manager.progression_service:
+					mission_manager.progression_service.add_xp(score / 5)
+					mission_manager.progression_service.add_coins(score / 10)
+			)
 		if cam_dir:
 			input_router.camera_toggle_requested.connect(func(): cam_dir.cycle_camera_mode())
 		if pause_menu:
@@ -133,7 +139,7 @@ func _ready() -> void:
 
 	# Connect gate pass audio and particle effects
 	for gate in gates:
-		gate.gate_passed.connect(func(_idx, _body):
+		gate.gate_passed.connect(func(_idx: int):
 			if audio_director: audio_director.play_gate_passed()
 			if vfx_director:
 				var g_pos = gate.global_position if gate.is_inside_tree() else gate.position

@@ -225,6 +225,10 @@ func _physics_process(delta: float) -> void:
 			if target_drone.current_state == FlightPhysics.DroneState.DISARMED or (target_drone.altitude_agl <= 0.15 and absf(target_drone.climb_rate) <= 0.3):
 				advance_step()
 
+		"pass_gate":
+			# Handled asynchronously by on_gate_passed signal
+			pass
+
 func _complete_active_lesson() -> void:
 	is_active = false
 

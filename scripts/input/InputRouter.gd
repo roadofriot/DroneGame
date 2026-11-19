@@ -200,10 +200,12 @@ func _poll_flight_inputs(delta: float) -> void:
 		raw_pitch = -raw_pitch
 
 	# 4. Apply Deadzone and Cubic Expo Curve: f(x) = x * (1 - e) + e * (x^3)
-	var processed_throttle = _apply_expo(_apply_deadzone(raw_throttle, deadzone), 0.0) # Linear throttle
-	var processed_yaw = _apply_expo(_apply_deadzone(raw_yaw, deadzone), expo)
-	var processed_pitch = _apply_expo(_apply_deadzone(raw_pitch, deadzone), expo)
-	var processed_roll = _apply_expo(_apply_deadzone(raw_roll, deadzone), expo)
+	# For touch input, VirtualJoystick already manages center deadzone
+	var dz = 0.0 if last_input_source == InputSource.TOUCH else deadzone
+	var processed_throttle = _apply_expo(_apply_deadzone(raw_throttle, dz), 0.0)
+	var processed_yaw = _apply_expo(_apply_deadzone(raw_yaw, dz), expo)
+	var processed_pitch = _apply_expo(_apply_deadzone(raw_pitch, dz), expo)
+	var processed_roll = _apply_expo(_apply_deadzone(raw_roll, dz), expo)
 
 	# Update ControlFrame
 	current_frame.throttle = clampf(processed_throttle, -1.0, 1.0)

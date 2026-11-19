@@ -29,6 +29,8 @@ var pulse_time: float = 0.0
 
 func _ready() -> void:
 	custom_minimum_size = Vector2(400.0, 400.0)
+	if size.x < 10.0 or size.y < 10.0:
+		size = custom_minimum_size
 	mouse_filter = MOUSE_FILTER_IGNORE
 	base_center = size / 2.0
 	knob_pos = base_center
@@ -60,18 +62,30 @@ func _process(delta: float) -> void:
 	var target_alpha = 1.0 if is_dragging else 0.0
 	active_glow_alpha = move_toward(active_glow_alpha, target_alpha, 4.0 * delta)
 
-	if knob_pos.distance_squared_to(prev_knob) > 0.01 or is_dragging or active_glow_alpha > 0.01:
+	if knob_pos.distance_squared_to(prev_knob) > 0.005 or active_glow_alpha > 0.01:
 		queue_redraw()
 
 ## Checks whether a touch coordinate falls within this joystick's active zone.
-func _is_point_inside(pt: Vector2, is_local: bool) -> bool:
+func _is_point_inside(pt: Vector2, is_local: bool, is_mouse: bool = false) -> bool:
+	var eff_center = base_center if base_center != Vector2.ZERO else (custom_minimum_size / 2.0)
 	var local_pos = pt if is_local else (get_global_transform().affine_inverse() * pt)
-	var hit_radius = max_radius * 1.35
-	if local_pos.distance_to(base_center) <= hit_radius:
+	if local_pos.distance_to(eff_center) <= max_radius * 1.35:
 		return true
-	if is_local:
-		return Rect2(Vector2.ZERO, size).has_point(pt)
-	return get_global_rect().has_point(pt)
+
+	var eff_size = size if size != Vector2.ZERO else custom_minimum_size
+	if Rect2(Vector2.ZERO, eff_size).has_point(local_pos):
+		return true
+
+	# On mobile touch, enable wide steering zones on respective halves of the screen
+	if not is_mouse and not is_local:
+		var vp_rect = get_viewport_rect()
+		if pt.y >= 75.0 and pt.y <= vp_rect.size.y:
+			if stick_type == "LEFT" and pt.x <= vp_rect.size.x * 0.45:
+				return true
+			elif stick_type == "RIGHT" and pt.x >= vp_rect.size.x * 0.55:
+				return true
+
+	return false
 
 ## Handles GUI input when dispatched directly (e.g. unit tests or UI events)
 func _gui_input(event: InputEvent) -> void:
@@ -84,10 +98,13 @@ func _process_input_event(event: InputEvent, is_local: bool) -> void:
 	# 1. Multi-Touch Screen Events (True simultaneous independent pointer support)
 	if event is InputEventScreenTouch:
 		if event.pressed:
-			if not is_dragging and _is_point_inside(event.position, is_local):
+			if not is_dragging and _is_point_inside(event.position, is_local, false):
 				is_dragging = true
 				touch_pointer_id = event.index
-				var local_pos = event.position if is_local else (get_global_transform().affine_inverse() * event.position)
+				var local_pos = (
+					event.position if is_local
+					else (get_global_transform().affine_inverse() * event.position)
+				)
 				_update_stick_target(local_pos)
 		else:
 			if is_dragging and event.index == touch_pointer_id:
@@ -95,17 +112,23 @@ func _process_input_event(event: InputEvent, is_local: bool) -> void:
 
 	elif event is InputEventScreenDrag:
 		if is_dragging and event.index == touch_pointer_id:
-			var local_pos = event.position if is_local else (get_global_transform().affine_inverse() * event.position)
+			var local_pos = (
+				event.position if is_local
+				else (get_global_transform().affine_inverse() * event.position)
+			)
 			_update_stick_target(local_pos)
 
 	# 2. Desktop Mouse Events (Isolated fallback for desktop testing)
 	elif event is InputEventMouseButton:
 		if event.button_index == MOUSE_BUTTON_LEFT:
 			if event.pressed:
-				if not is_dragging and _is_point_inside(event.position, is_local):
+				if not is_dragging and _is_point_inside(event.position, is_local, true):
 					is_dragging = true
 					touch_pointer_id = MOUSE_POINTER_ID
-					var local_pos = event.position if is_local else (get_global_transform().affine_inverse() * event.position)
+					var local_pos = (
+						event.position if is_local
+						else (get_global_transform().affine_inverse() * event.position)
+					)
 					_update_stick_target(local_pos)
 			else:
 				if is_dragging and touch_pointer_id == MOUSE_POINTER_ID:
@@ -114,7 +137,10 @@ func _process_input_event(event: InputEvent, is_local: bool) -> void:
 	elif event is InputEventMouseMotion:
 		var is_mouse_down = (event.button_mask & MOUSE_BUTTON_MASK_LEFT) != 0
 		if is_dragging and touch_pointer_id == MOUSE_POINTER_ID and is_mouse_down:
-			var local_pos = event.position if is_local else (get_global_transform().affine_inverse() * event.position)
+			var local_pos = (
+				event.position if is_local
+				else (get_global_transform().affine_inverse() * event.position)
+			)
 			_update_stick_target(local_pos)
 
 func _update_stick_target(pos: Vector2) -> void:
